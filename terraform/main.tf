@@ -21,7 +21,7 @@ locals {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.12.2"
+  version = "1.12.3"
 
   use_eks                      = true
   project                      = local.project
@@ -47,8 +47,33 @@ resource "helm_release" "aws_load_balancer_controller" {
       value = local.project
     },
     {
+      name  = "serviceAccount.create"
+      value = true
+    },
+    {
+      name  = "serviceAccount.name"
+      value = "aws-load-balancer-controller"
+    },
+    {
       name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
       value = module.k8s_lab.aws_lbc_role_arn
+    },
+    {
+      # https://repost.aws/questions/QUG4ZL40hnRFas7ZgLXcQvoQ/al2023-ami-upgrade-eks-cluster-aws-load-balancer-error
+      name = "vpcId"
+      value = module.k8s_lab.vpc_id
     }
   ]
+
+  depends_on = [module.k8s_lab]
+}
+
+resource "helm_release" "argo_cd" {
+  name       = "argo-cd"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  namespace  = "argocd"
+  create_namespace = true
+
+  depends_on = [module.k8s_lab]
 }
