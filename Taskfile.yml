@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task -l
+
+  deploy:
+    desc: Deploy lab
+    dir: terraform
+    silent: true
+    cmds:
+      - terraform init
+      - terraform apply -auto-approve
+      
+  destroy:
+    desc: Destroy lab
+    dir: terraform
+    silent: true
+    cmds:
+      - terraform destroy -auto-approve
+      
+  plan:
+    desc: Show terraform plan
+    dir: terraform
+    silent: true
+    cmds:
+      - terraform init
+      - terraform plan
+      
+  kubeconfig:
+    desc: Add the cluster to ~/.kube/config
+    silent: true
+    cmds:
+      - aws eks update-kubeconfig --name k8s-lab --alias k8s-lab --region us-east-1
+
+  argocd-pf:
+    desc: Setup local port forwarding to the ArgoCD pod
+    silent: true
+    cmds:
+      - echo http://127.0.0.1:8080
+      - kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:443 > /dev/null
+
+  argocd-password:
+    desc: Get the default admin password for ArgoCD
+    silent: true
+    cmds:
+      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
