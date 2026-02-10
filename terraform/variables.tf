@@ -3,3 +3,9 @@ variable "endpoint_public_access_cidrs" {
   type        = list(string)
   default     = []
 }
+
+variable "alb_allowed_cidrs" {
+  type        = list(string)
+  description = "CIDRs allowed to access the ALB provisioned by the AWS Load Balancer Controller"
+  default     = []
+}
