@@ -49,3 +49,9 @@ tasks:
     silent: true
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+  alb_dns:
+    desc: Print out the ALB DNS name
+    silent: true
+    cmds:
+      - echo "http://$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].DNSName' --output text | grep argocd)"
