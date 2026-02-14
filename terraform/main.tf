@@ -15,8 +15,13 @@ provider "helm" {
 }
 
 provider "kubernetes" {
-  config_path    = "~/.kube/config"
-  config_context = local.project
+  host                   = module.k8s_lab.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.k8s_lab.cluster_certificate_authority_data)
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    args        = ["eks", "get-token", "--cluster-name", local.project]
+    command     = "aws"
+  }
 }
 
 locals {
@@ -26,7 +31,7 @@ locals {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.13.1"
+  version = "1.13.2"
 
   use_eks                      = true
   project                      = local.project
@@ -41,11 +46,22 @@ module "k8s_lab" {
   alb_allowed_cidrs            = var.alb_allowed_cidrs
 }
 
+resource "time_sleep" "wait_for_cluster" {
+  depends_on = [
+    module.k8s_lab,
+  ]
+
+  create_duration = "180s"
+}
+
 resource "helm_release" "aws_load_balancer_controller" {
-  name       = "aws-load-balancer-controller"
-  repository = "https://aws.github.io/eks-charts"
-  chart      = "aws-load-balancer-controller"
-  namespace  = "kube-system"
+  name          = "aws-load-balancer-controller"
+  repository    = "https://aws.github.io/eks-charts"
+  chart         = "aws-load-balancer-controller"
+  namespace     = "kube-system"
+  atomic        = true
+  wait          = true
+  wait_for_jobs = true
 
   set = [
     {
@@ -71,7 +87,7 @@ resource "helm_release" "aws_load_balancer_controller" {
     }
   ]
 
-  depends_on = [module.k8s_lab]
+  depends_on = [module.k8s_lab, time_sleep.wait_for_cluster]
 }
 
 resource "helm_release" "argocd" {
@@ -80,6 +96,10 @@ resource "helm_release" "argocd" {
   chart            = "argo-cd"
   namespace        = "argocd"
   create_namespace = true
+  timeout          = 600
+  wait             = true
+  wait_for_jobs    = true
+  atomic           = true
 
   values = [
     yamlencode({
@@ -97,7 +117,7 @@ resource "helm_release" "argocd" {
     })
   ]
 
-  depends_on = [module.k8s_lab]
+  depends_on = [module.k8s_lab, helm_release.aws_load_balancer_controller]
 }
 
 resource "kubernetes_ingress_v1" "argocd" {

@@ -2,6 +2,9 @@
 
 version: '3'
 
+env:
+  AWS_PROFILE: lab
+
 tasks:
   default:
     silent: true
@@ -15,14 +18,16 @@ tasks:
     cmds:
       - terraform init
       - terraform apply -auto-approve
-      
+
   destroy:
     desc: Destroy lab
     dir: terraform
     silent: true
     cmds:
-      - terraform destroy -auto-approve
-      
+      - task: delete-ingress
+      - task: terraform-destroy
+      - task: cleanup-orphaned-enis
+
   plan:
     desc: Show terraform plan
     dir: terraform
@@ -30,7 +35,7 @@ tasks:
     cmds:
       - terraform init
       - terraform plan
-      
+
   kubeconfig:
     desc: Add the cluster to ~/.kube/config
     silent: true
@@ -55,3 +60,24 @@ tasks:
     silent: true
     cmds:
       - echo "http://$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].DNSName' --output text | grep argocd)"
+
+  delete-ingress:
+    desc: Delete the ArgoCD ingress to force the ALB to be deleted
+    silent: true
+    cmds:
+      - kubectl delete ingress -n argocd --all --ignore-not-found=true || true
+      - echo "Waiting for ALB resources to be deleted..."
+      - sleep 300
+
+  cleanup-orphaned-enis:
+    desc: Cleanup orphaned ENIs
+    silent: true
+    cmds:
+      - aws ec2 describe-network-interfaces --filters Name=tag:cluster.k8s.amazonaws.com/name,Values=k8s-lab --query NetworkInterfaces[*].NetworkInterfaceId --output text | xargs -r -n1 aws ec2 delete-network-interface --network-interface-id
+
+  terraform-destroy:
+    desc: Destroy the lab infrastructure
+    dir: terraform
+    silent: true
+    cmds:
+      - terraform destroy -auto-approve
