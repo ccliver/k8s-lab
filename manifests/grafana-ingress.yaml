@@ -1,27 +1,27 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: argocd-server
-  namespace: argocd
+  name: grafana
+  namespace: monitoring
   annotations:
     alb.ingress.kubernetes.io/group.name: lab
-    alb.ingress.kubernetes.io/group.order: "1"
+    alb.ingress.kubernetes.io/group.order: "2"
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/security-groups: ${ALB_SECURITY_GROUP_ID}
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-    alb.ingress.kubernetes.io/healthcheck-path: /healthz
-    alb.ingress.kubernetes.io/healthcheck-port: "8080"
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/healthcheck-port: "3000"
     kubernetes.io/ingress.class: alb
 spec:
   ingressClassName: alb
   rules:
     - http:
         paths:
-          - path: /argocd
+          - path: /grafana
             pathType: Prefix
             backend:
               service:
-                name: argo-cd-argocd-server
+                name: kube-prometheus-stack-grafana
                 port:
                   number: 80

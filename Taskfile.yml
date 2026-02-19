@@ -21,6 +21,7 @@ tasks:
       - task: helm-install-lbc
       - task: helm-install-argocd
       - task: apply-argocd-ingress
+      - task: apply-grafana-ingress
 
   destroy:
     desc: Destroy lab
@@ -59,11 +60,17 @@ tasks:
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
+  grafana-password:
+    desc: Get the default admin password for Grafana
+    silent: true
+    cmds:
+      - kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+
   alb_dns:
     desc: Print out the ALB DNS name
     silent: true
     cmds:
-      - echo "http://$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].DNSName' --output text | grep argocd)"
+      - echo "http://$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].DNSName' --output text | grep k8s-lab)"
 
 
   tf-apply:
@@ -104,7 +111,7 @@ tasks:
           --create-namespace \
           --set server.service.type=ClusterIP \
           --set server.ingress.enabled=false \
-          --set "server.extraArgs={--insecure}" \
+          --set "server.extraArgs={--insecure,--basehref=/argocd,--rootpath=/argocd}" \
           --wait \
           --timeout 10m
 
@@ -113,10 +120,16 @@ tasks:
     cmds:
       - ALB_SECURITY_GROUP_ID=$(terraform -chdir=terraform output -raw alb_security_group_id) envsubst < manifests/argocd-ingress.yaml | kubectl apply -f -
 
+  apply-grafana-ingress:
+    silent: true
+    cmds:
+      - ALB_SECURITY_GROUP_ID=$(terraform -chdir=terraform output -raw alb_security_group_id) envsubst < manifests/grafana-ingress.yaml | kubectl apply -f -
+
   delete-ingress:
     silent: true
     cmds:
       - kubectl delete ingress -n argocd argocd-server --ignore-not-found=true
+      - kubectl delete ingress -n monitoring grafana --ignore-not-found=true
       - echo "Waiting for ALB resources to be deleted..."
       - sleep 300
 
