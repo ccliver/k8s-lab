@@ -39,3 +39,6 @@ terraform.rc
 .terraform.lock.hcl
 
 *.swp
+
+# Local backend config (contains account-specific bucket names)
+backend.hcl
