@@ -124,7 +124,7 @@ ArgoCD will pick it up and sync the target repo/path to the cluster. The `nginx`
 
 ## Infrastructure Module
 
-Terraform uses the [`ccliver/k8s-lab/aws`](https://registry.terraform.io/modules/ccliver/k8s-lab/aws) module (v1.13.3). Remote state is stored in S3 (`ccliver-k8s-lab-tf-state`, `us-east-1`) with native S3 lock file support.
+Terraform uses the [`ccliver/k8s-lab/aws`](https://registry.terraform.io/modules/ccliver/k8s-lab/aws) module (v1.13.3). Remote state is stored in S3 with native S3 lock file support. Backend configuration is kept in a gitignored `terraform/backend.hcl` — copy `terraform/backend.hcl.example` and fill in your own bucket details before deploying.
 
 ## Pre-commit Hooks
 

@@ -38,7 +38,7 @@ tasks:
     dir: terraform
     silent: true
     cmds:
-      - terraform init
+      - terraform init -backend-config=backend.hcl
       - terraform plan
 
   kubeconfig:
@@ -77,7 +77,7 @@ tasks:
     dir: terraform
     silent: true
     cmds:
-      - terraform init
+      - terraform init -backend-config=backend.hcl
       - terraform apply -auto-approve
 
   wait-for-nodes:
