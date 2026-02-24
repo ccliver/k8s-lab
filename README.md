@@ -118,13 +118,9 @@ task grafana-password  Retrieve Grafana admin password
 
 ## Adding Applications (GitOps)
 
-Drop an ArgoCD `Application` manifest into `apps/` and apply it:
+The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-```bash
-kubectl apply -f apps/<your-app>.yaml
-```
-
-ArgoCD will pick it up and sync the target repo/path to the cluster. The `otel-demo` app under `apps/otel-demo.yaml` is a working example.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/otel-demo.yaml` is a working example.
 
 ## Infrastructure Module
 
