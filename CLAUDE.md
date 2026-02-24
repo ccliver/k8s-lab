@@ -65,7 +65,7 @@ The `task destroy` sequence is order-sensitive to avoid orphaned AWS resources:
 
 ### GitOps / Applications
 
-`argocd-apps/` holds ArgoCD `Application` manifests. The `nginx/nginx.yaml` is a sample deployment (2 replicas, nginx:alpine).
+`apps/` holds ArgoCD `Application` manifests. The `nginx/nginx.yaml` is a sample deployment (2 replicas, nginx:alpine).
 
 `manifests/` holds raw Kubernetes manifests applied by the Taskfile. `argocd-ingress.yaml` uses `${ALB_SECURITY_GROUP_ID}` as an `envsubst` placeholder.
 
