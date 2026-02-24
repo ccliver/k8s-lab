@@ -22,6 +22,7 @@ tasks:
       - task: helm-install-argocd
       - task: apply-argocd-ingress
       - task: apply-grafana-ingress
+      - task: bootstrap-argocd
 
   destroy:
     desc: Destroy lab
@@ -152,3 +153,8 @@ tasks:
     silent: true
     cmds:
       - aws ec2 describe-network-interfaces --filters Name=tag:cluster.k8s.amazonaws.com/name,Values=k8s-lab --query NetworkInterfaces[*].NetworkInterfaceId --output text | xargs -r -n1 aws ec2 delete-network-interface --network-interface-id
+
+  bootstrap-argocd:
+    silent: true
+    cmds:
+      - kubectl apply -f apps/root.yaml
