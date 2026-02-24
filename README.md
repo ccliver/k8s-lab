@@ -87,7 +87,7 @@ task grafana-password  Retrieve Grafana admin password
 ├── manifests/                # Raw K8s manifests applied by Taskfile
 │   ├── argocd-ingress.yaml   # ArgoCD ALB ingress (envsubst for SG ID)
 │   └── grafana-ingress.yaml  # Grafana ALB ingress (envsubst for SG ID)
-└── argocd-apps/              # ArgoCD Application manifests (GitOps)
+└── apps/                     # ArgoCD Application manifests (GitOps)
     └── nginx/nginx.yaml      # Sample nginx deployment (2 replicas)
 ```
 
@@ -114,13 +114,13 @@ task grafana-password  Retrieve Grafana admin password
 
 ## Adding Applications (GitOps)
 
-Drop an ArgoCD `Application` manifest into `argocd-apps/` and apply it:
+Drop an ArgoCD `Application` manifest into `apps/` and apply it:
 
 ```bash
-kubectl apply -f argocd-apps/<your-app>/app.yaml
+kubectl apply -f apps/<your-app>/app.yaml
 ```
 
-ArgoCD will pick it up and sync the target repo/path to the cluster. The `nginx` app under `argocd-apps/nginx/` is a working example.
+ArgoCD will pick it up and sync the target repo/path to the cluster. The `nginx` app under `apps/nginx/` is a working example.
 
 ## Infrastructure Module
 

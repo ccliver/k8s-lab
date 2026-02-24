@@ -22,6 +22,7 @@ tasks:
       - task: helm-install-argocd
       - task: apply-argocd-ingress
       - task: apply-grafana-ingress
+      - task: bootstrap-argocd
 
   destroy:
     desc: Destroy lab
@@ -123,6 +124,7 @@ tasks:
   apply-grafana-ingress:
     silent: true
     cmds:
+      - kubectl create namespace monitoring
       - ALB_SECURITY_GROUP_ID=$(terraform -chdir=terraform output -raw alb_security_group_id) envsubst < manifests/grafana-ingress.yaml | kubectl apply -f -
 
   delete-ingress:
@@ -151,3 +153,8 @@ tasks:
     silent: true
     cmds:
       - aws ec2 describe-network-interfaces --filters Name=tag:cluster.k8s.amazonaws.com/name,Values=k8s-lab --query NetworkInterfaces[*].NetworkInterfaceId --output text | xargs -r -n1 aws ec2 delete-network-interface --network-interface-id
+
+  bootstrap-argocd:
+    silent: true
+    cmds:
+      - kubectl apply -f apps/root.yaml
