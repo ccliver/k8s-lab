@@ -29,6 +29,7 @@ tasks:
     silent: true
     cmds:
       - task: kubeconfig
+      - task: delete-argocd-apps
       - task: delete-ingress
       - task: drain-and-destroy-nodes
       - task: terraform-destroy
@@ -158,3 +159,11 @@ tasks:
     silent: true
     cmds:
       - kubectl apply -f apps/root.yaml
+
+  delete-argocd-apps:
+    desc: Delete ArgoCD root app and wait for cleanup
+    silent: true
+    cmds:
+      - kubectl delete application root -n argocd --wait=true --timeout=5m || true
+      - echo "Waiting for app cleanup..."
+      - sleep 30
