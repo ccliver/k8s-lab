@@ -10,7 +10,7 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
                         │                                          │
                         │   ┌──────────────────────────────────┐   │
                         │   │            EKS (k8s-lab)         │   │
-                        │   │  K8s 1.34 · t4g.small · 2-3 nodes│   │
+                        │   │  K8s 1.34 · t4g.medium · 3 nodes │   │
                         │   │  SPOT · ARM/Graviton · AL2023    │   │
                         │   │                                  │   │
   Browser ──── ALB ─────┼───┤  /argocd  → ArgoCD               │   │
@@ -88,7 +88,9 @@ task grafana-password  Retrieve Grafana admin password
 │   ├── argocd-ingress.yaml   # ArgoCD ALB ingress (envsubst for SG ID)
 │   └── grafana-ingress.yaml  # Grafana ALB ingress (envsubst for SG ID)
 └── apps/                     # ArgoCD Application manifests (GitOps)
-    └── nginx/nginx.yaml      # Sample nginx deployment (2 replicas)
+    ├── root.yaml             # Root app that bootstraps all other apps
+    ├── kube-prometheus-stack.yaml  # Prometheus + Grafana monitoring stack
+    └── otel-demo.yaml        # OpenTelemetry demo app
 ```
 
 ## Bootstrap Sequence
@@ -102,25 +104,23 @@ task grafana-password  Retrieve Grafana admin password
 5. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
 6. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
 7. **apply-grafana-ingress** — creates ALB ingress for Grafana at `/grafana`
+8. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
 
 ## Tear Down
 
 `task destroy` runs a safe multi-stage teardown to avoid orphaned AWS resources:
 
-1. Delete ArgoCD and Grafana ingresses → wait 300s for ALB deregistration
-2. Drain all nodes → wait 90s for VPC CNI cleanup → destroy the managed node group
-3. `terraform destroy` — removes remaining AWS resources
-4. Clean up any orphaned ENIs tagged with the cluster name
+1. Delete ArgoCD root app and wait for all app cleanup (up to 5m + 30s)
+2. Delete ArgoCD and Grafana ingresses → wait 300s for ALB deregistration
+3. Drain all nodes → wait 90s for VPC CNI cleanup → destroy the managed node group
+4. `terraform destroy` — removes remaining AWS resources
+5. Clean up any orphaned ENIs tagged with the cluster name
 
 ## Adding Applications (GitOps)
 
-Drop an ArgoCD `Application` manifest into `apps/` and apply it:
+The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-```bash
-kubectl apply -f apps/<your-app>/app.yaml
-```
-
-ArgoCD will pick it up and sync the target repo/path to the cluster. The `nginx` app under `apps/nginx/` is a working example.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/otel-demo.yaml` is a working example.
 
 ## Infrastructure Module
 
