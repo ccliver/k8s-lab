@@ -123,6 +123,7 @@ tasks:
   apply-grafana-ingress:
     silent: true
     cmds:
+      - kubectl create namespace monitoring
       - ALB_SECURITY_GROUP_ID=$(terraform -chdir=terraform output -raw alb_security_group_id) envsubst < manifests/grafana-ingress.yaml | kubectl apply -f -
 
   delete-ingress:
