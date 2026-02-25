@@ -5,26 +5,35 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
 ## Architecture
 
 ```
-                        ┌──────────────────────────────────────────┐
-                        │                  AWS                     │
-                        │                                          │
-                        │   ┌──────────────────────────────────┐   │
-                        │   │            EKS (k8s-lab)         │   │
-                        │   │  K8s 1.34 · t4g.medium · 3 nodes │   │
-                        │   │  SPOT · ARM/Graviton · AL2023    │   │
-                        │   │                                  │   │
-  Browser ──── ALB ─────┼───┤  /argocd  → ArgoCD               │   │
-  (HTTP:80)  (shared)   │   │  /grafana → Grafana              │   │
-                        │   │                                  │   │
-                        │   │  AWS Load Balancer Controller    │   │
-                        │   │  kube-prometheus-stack           │   │
-                        │   └──────────────────────────────────┘   │
-                        │                                          │
-                        │  S3 (Terraform state) · IAM (IRSA)       │
-                        └──────────────────────────────────────────┘
+  ┌──────────┐                ┌──────────────────────────────────────────────────────────────────┐
+  │  Browser │── HTTP:80 ────▶│                               AWS                                │
+  └──────────┘                │                                                                  │
+                              │   ┌────────────────────────────────────────────────────────┐     │
+                              │   │       ALB  (internet-facing · IngressGroup "lab")      │     │
+                              │   └──────────────────┬──────────────────────┬──────────────┘     │
+                              │                      │ /argocd              │ /grafana           │
+  ┌──────────┐                │   ┌──────────────────▼──────────────────────▼──────────────┐     │
+  │ Git repo │                │   │                 EKS Cluster (k8s-lab)                  │     │
+  │  (apps/) │◀── ArgoCD ─────┤   │      K8s 1.34 · t4g.medium SPOT · ARM/Graviton · 3–6   │     │
+  └──────────┘                │   │                                                        │     │
+                              │   │  ┌──────────────────────┐  ┌──────────────────────┐    │     │
+                              │   │  │   ns: kube-system    │  │      ns: argocd      │    │     │
+                              │   │  │   · AWS LBC          │  │  · ArgoCD            │    │     │
+                              │   │  │   · Cluster Auto-    │  │    (app-of-apps)     │    │     │
+                              │   │  │     scaler           │  └──────────────────────┘    │     │
+                              │   │  └──────────────────────┘                              │     │
+                              │   │  ┌──────────────────────┐  ┌─────────────────────┐     │     │
+                              │   │  │   ns: monitoring     │  │    ns: otel-demo    │     │     │
+                              │   │  │   · Prometheus       │  │  · OTel Demo App    │     │     │
+                              │   │  │   · Grafana          │  └─────────────────────┘     │     │
+                              │   │  └──────────────────────┘                              │     │
+                              │   └────────────────────────────────────────────────────────┘     │
+                              │                                                                  │
+                              │   IAM (IRSA: LBC · Cluster Autoscaler)  ·  S3 (TF state)         │
+                              └──────────────────────────────────────────────────────────────────┘
 ```
 
-ArgoCD and Grafana share a single internet-facing ALB via an IngressGroup (`lab`), path-routed at `/argocd` and `/grafana`.
+ArgoCD and Grafana share a single internet-facing ALB via an IngressGroup (`lab`), path-routed at `/argocd` and `/grafana`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
 
 ## Prerequisites
 
@@ -81,7 +90,7 @@ task grafana-password  Retrieve Grafana admin password
 ├── terraform/                # AWS infrastructure (EKS, VPC, IAM, ALB SG)
 │   ├── main.tf               # ccliver/k8s-lab/aws module call
 │   ├── variables.tf          # endpoint_public_access_cidrs, alb_allowed_cidrs
-│   ├── output.tf             # aws_lbc_role_arn, vpc_id, alb_security_group_id
+│   ├── output.tf             # aws_lbc_role_arn, vpc_id, alb_security_group_id, cluster_autoscaler_role_arn
 │   ├── backend.tf            # S3 remote state (us-east-1)
 │   └── versions.tf           # Terraform >= 1.0, AWS ~> 6
 ├── manifests/                # Raw K8s manifests applied by Taskfile
@@ -101,10 +110,11 @@ task grafana-password  Retrieve Grafana admin password
 2. **kubeconfig** — updates `~/.kube/config` for the new cluster
 3. **wait-for-nodes** — waits until all nodes are `Ready`
 4. **helm-install-lbc** — installs AWS Load Balancer Controller into `kube-system` with IRSA
-5. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
-6. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
-7. **apply-grafana-ingress** — creates ALB ingress for Grafana at `/grafana`
-8. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
+5. **helm-install-cluster-autoscaler** — installs Cluster Autoscaler into `kube-system` with IRSA
+6. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
+7. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
+8. **apply-grafana-ingress** — creates ALB ingress for Grafana at `/grafana`
+9. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
 
 ## Tear Down
 
@@ -124,7 +134,7 @@ To add a new application, commit an ArgoCD `Application` manifest to `apps/` and
 
 ## Infrastructure Module
 
-Terraform uses the [`ccliver/k8s-lab/aws`](https://registry.terraform.io/modules/ccliver/k8s-lab/aws) module (v1.13.3). Remote state is stored in S3 with native S3 lock file support. Backend configuration is kept in a gitignored `terraform/backend.hcl` — copy `terraform/backend.hcl.example` and fill in your own bucket details before deploying.
+Terraform uses the [`ccliver/k8s-lab/aws`](https://registry.terraform.io/modules/ccliver/k8s-lab/aws) module (v1.14.1). Remote state is stored in S3 with native S3 lock file support. Backend configuration is kept in a gitignored `terraform/backend.hcl` — copy `terraform/backend.hcl.example` and fill in your own bucket details before deploying.
 
 ## Pre-commit Hooks
 
