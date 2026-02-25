@@ -5,32 +5,32 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
 ## Architecture
 
 ```
-  ┌──────────┐                ┌──────────────────────────────────────────────────────────────────┐
-  │  Browser │── HTTP:80 ────▶│                               AWS                                │
-  └──────────┘                │                                                                  │
-                              │   ┌────────────────────────────────────────────────────────┐     │
-                              │   │       ALB  (internet-facing · IngressGroup "lab")      │     │
-                              │   └──────────────────┬──────────────────────┬──────────────┘     │
-                              │                      │ /argocd              │ /grafana           │
-  ┌──────────┐                │   ┌──────────────────▼──────────────────────▼──────────────┐     │
-  │ Git repo │                │   │                 EKS Cluster (k8s-lab)                  │     │
-  │  (apps/) │◀── ArgoCD ─────┤   │      K8s 1.34 · t4g.medium SPOT · ARM/Graviton · 3–6   │     │
-  └──────────┘                │   │                                                        │     │
-                              │   │  ┌──────────────────────┐  ┌──────────────────────┐    │     │
-                              │   │  │   ns: kube-system    │  │      ns: argocd      │    │     │
-                              │   │  │   · AWS LBC          │  │  · ArgoCD            │    │     │
-                              │   │  │   · Cluster Auto-    │  │    (app-of-apps)     │    │     │
-                              │   │  │     scaler           │  └──────────────────────┘    │     │
-                              │   │  └──────────────────────┘                              │     │
-                              │   │  ┌──────────────────────┐  ┌─────────────────────┐     │     │
-                              │   │  │   ns: monitoring     │  │    ns: otel-demo    │     │     │
-                              │   │  │   · Prometheus       │  │  · OTel Demo App    │     │     │
-                              │   │  │   · Grafana          │  └─────────────────────┘     │     │
-                              │   │  └──────────────────────┘                              │     │
-                              │   └────────────────────────────────────────────────────────┘     │
-                              │                                                                  │
-                              │   IAM (IRSA: LBC · Cluster Autoscaler)  ·  S3 (TF state)         │
-                              └──────────────────────────────────────────────────────────────────┘
+┌──────────┐                ┌────────────────────────────────────────────────────────────────┐
+│  Browser │── HTTP:80 ────▶│                               AWS                              │
+└──────────┘                │                                                                │
+                            │   ┌────────────────────────────────────────────────────────┐   │
+                            │   │       ALB  (internet-facing · IngressGroup "lab")      │   │
+                            │   └──────────────────┬──────────────────────┬──────────────┘   │
+                            │                      │ /argocd              │ /grafana         │
+┌──────────┐                │   ┌──────────────────▼──────────────────────▼──────────────┐   │
+│ Git repo │                │   │                 EKS Cluster (k8s-lab)                  │   │
+│  (apps/) │◀── ArgoCD ─────┤   │      K8s 1.34 · t4g.medium SPOT · ARM/Graviton · 3–6   │   │
+└──────────┘                │   │                                                        │   │
+                            │   │  ┌──────────────────────┐  ┌──────────────────────┐    │   │
+                            │   │  │   ns: kube-system    │  │      ns: argocd      │    │   │
+                            │   │  │   · AWS LBC          │  │  · ArgoCD            │    │   │
+                            │   │  │   · Cluster Auto-    │  │    (app-of-apps)     │    │   │
+                            │   │  │     scaler           │  └──────────────────────┘    │   │
+                            │   │  └──────────────────────┘                              │   │
+                            │   │  ┌──────────────────────┐  ┌─────────────────────┐     │   │
+                            │   │  │   ns: monitoring     │  │    ns: otel-demo    │     │   │
+                            │   │  │   · Prometheus       │  │  · OTel Demo App    │     │   │
+                            │   │  │   · Grafana          │  └─────────────────────┘     │   │
+                            │   │  └──────────────────────┘                              │   │
+                            │   └────────────────────────────────────────────────────────┘   │
+                            │                                                                │
+                            │   IAM (IRSA: LBC · Cluster Autoscaler)  ·  S3 (TF state)       │
+                            └────────────────────────────────────────────────────────────────┘
 ```
 
 ArgoCD and Grafana share a single internet-facing ALB via an IngressGroup (`lab`), path-routed at `/argocd` and `/grafana`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
