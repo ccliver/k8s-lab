@@ -12,3 +12,8 @@ output "alb_security_group_id" {
   description = "Security group ID to attach to the ArgoCD ALB ingress"
   value       = module.k8s_lab.alb_security_group_id
 }
+
+output "cluster_autoscaler_role_arn" {
+  description = "IAM role ARN for the Cluster Autoscaler service account"
+  value       = module.k8s_lab.cluster_autoscaler_role_arn
+}

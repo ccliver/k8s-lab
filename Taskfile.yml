@@ -19,6 +19,7 @@ tasks:
       - task: kubeconfig
       - task: wait-for-nodes
       - task: helm-install-lbc
+      - task: helm-install-cluster-autoscaler
       - task: helm-install-argocd
       - task: apply-argocd-ingress
       - task: apply-grafana-ingress
@@ -101,6 +102,18 @@ tasks:
           --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform -chdir=terraform output -raw aws_lbc_role_arn)" \
           --set vpcId=$(terraform -chdir=terraform output -raw vpc_id) \
           --wait
+
+  helm-install-cluster-autoscaler:
+    silent: true
+    cmds:
+      - helm repo add autoscaler https://kubernetes.github.io/autoscaler
+      - helm repo update autoscaler
+      - |
+        helm install cluster-autoscaler autoscaler/cluster-autoscaler \
+        --namespace kube-system \
+        --set autoDiscovery.clusterName=k8s-lab \
+        --set awsRegion=us-east-1 \
+        --set rbac.serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=$(terraform -chdir=terraform output -raw cluster_autoscaler_role_arn)
 
   helm-install-argocd:
     silent: true
