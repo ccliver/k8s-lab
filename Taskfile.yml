@@ -75,6 +75,19 @@ tasks:
     cmds:
       - echo "http://$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].DNSName' --output text | grep k8s-lab)"
 
+  publish-http-canary:
+    desc: Build and push http-canary to Docker Hub (TAG=<tag>, default latest)
+    silent: true
+    vars:
+      TAG: '{{.TAG | default "latest"}}'
+    cmds:
+      - docker buildx inspect multiplatform > /dev/null 2>&1 || docker buildx create --name multiplatform --use
+      - |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --tag ccliver/http-canary:{{.TAG}} \
+          --push \
+          src/http-canary/
 
   tf-apply:
     dir: terraform

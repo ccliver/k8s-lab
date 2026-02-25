@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: http-canary
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: http-canary
+  namespace: http-canary
+data:
+  # Comma-separated list of URLs to probe every CHECK_INTERVAL seconds.
+  CANARY_URLS: "https://www.google.com,https://httpbin.org/status/200"
+  CHECK_INTERVAL: "30"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-canary
+  namespace: http-canary
+  labels:
+    app: http-canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: http-canary
+  template:
+    metadata:
+      labels:
+        app: http-canary
+    spec:
+      containers:
+        - name: http-canary
+          image: ccliver/http-canary:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: http-canary
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: http-canary
+  namespace: http-canary
+  labels:
+    app: http-canary
+spec:
+  selector:
+    app: http-canary
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: http-canary
+  namespace: http-canary
+  labels:
+    app: http-canary
+    # Required for kube-prometheus-stack's Prometheus to discover this monitor.
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: http-canary
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 60s

@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: http-canary
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ccliver/k8s-lab
+    targetRevision: main
+    path: manifests
+    directory:
+      include: http-canary.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: http-canary
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
