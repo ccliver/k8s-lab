@@ -43,9 +43,9 @@ All Terraform lives in `terraform/`. Remote state is in S3 (`ccliver-k8s-lab-tf-
 
 Resources provisioned:
 - **EKS cluster** via the `ccliver/k8s-lab/aws` Terraform registry module (cluster name: `k8s-lab`, Kubernetes 1.34)
-  - Nodes: `t4g.medium` SPOT, ARM/Graviton, AL2023, min 3 / max 3
+  - Nodes: `t4g.medium` SPOT, ARM/Graviton, AL2023, min 3 / max 6
 
-`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, and `alb_security_group_id` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
+`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, and `cluster_autoscaler_role_arn` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
 
 ### Bootstrap Sequence (post-`terraform apply`)
 
@@ -53,10 +53,11 @@ Resources provisioned:
 1. `kubeconfig` — update `~/.kube/config`
 2. `wait-for-nodes` — `kubectl wait` until all nodes are Ready
 3. `helm-install-lbc` — install AWS Load Balancer Controller into `kube-system` with IRSA annotation from Terraform output
-4. `helm-install-argocd` — install ArgoCD into `argocd` namespace, ClusterIP, TLS disabled (`--insecure`, `--basehref=/argocd`, `--rootpath=/argocd`)
-5. `apply-argocd-ingress` — `envsubst` populates `${ALB_SECURITY_GROUP_ID}` in `manifests/argocd-ingress.yaml` then `kubectl apply`
-6. `apply-grafana-ingress` — creates `monitoring` namespace and applies `manifests/grafana-ingress.yaml`
-7. `bootstrap-argocd` — `kubectl apply -f apps/root.yaml`
+4. `helm-install-cluster-autoscaler` — install Cluster Autoscaler into `kube-system` with IRSA annotation from Terraform output
+5. `helm-install-argocd` — install ArgoCD into `argocd` namespace, ClusterIP, TLS disabled (`--insecure`, `--basehref=/argocd`, `--rootpath=/argocd`)
+6. `apply-argocd-ingress` — `envsubst` populates `${ALB_SECURITY_GROUP_ID}` in `manifests/argocd-ingress.yaml` then `kubectl apply`
+7. `apply-grafana-ingress` — creates `monitoring` namespace and applies `manifests/grafana-ingress.yaml`
+8. `bootstrap-argocd` — `kubectl apply -f apps/root.yaml`
 
 ### Destroy Process
 
