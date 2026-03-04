@@ -75,10 +75,14 @@ The `task destroy` sequence is order-sensitive to avoid orphaned AWS resources:
 - `root.yaml` — root app that bootstraps all other apps
 - `kube-prometheus-stack.yaml` — Prometheus + Grafana monitoring stack
 - `otel-demo.yaml` — OpenTelemetry demo app
+- `http-canary.yaml` — HTTP canary app that generates custom Prometheus metrics
 
-`manifests/` holds raw Kubernetes manifests applied by the Taskfile:
+`manifests/` holds raw Kubernetes manifests. The ingress manifests are applied by the Taskfile; `http-canary.yaml` is managed by ArgoCD:
 - `argocd-ingress.yaml` — uses `${ALB_SECURITY_GROUP_ID}` as an `envsubst` placeholder
 - `grafana-ingress.yaml` — uses `${ALB_SECURITY_GROUP_ID}` as an `envsubst` placeholder
+- `http-canary.yaml` — Deployment, Service, and ServiceMonitor for the http-canary app
+
+`src/http-canary/` holds the Python source and Dockerfile for the `ccliver/http-canary` Docker image. Build and publish with `task publish-http-canary` (supports multi-arch: amd64 + arm64).
 
 ## Provider Versions
 

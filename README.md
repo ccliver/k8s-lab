@@ -26,7 +26,11 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
                             │   │  │   ns: monitoring     │  │    ns: otel-demo    │     │   │
                             │   │  │   · Prometheus       │  │  · OTel Demo App    │     │   │
                             │   │  │   · Grafana          │  └─────────────────────┘     │   │
-                            │   │  └──────────────────────┘                              │   │
+                            │   │  └──────────────────────┘  ┌─────────────────────┐     │   │
+                            │   │                            │   ns: http-canary   │     │   │
+                            │   │                            │  · HTTP Canary      │     │   │
+                            │   │                            │    (custom metrics) │     │   │
+                            │   │                            └─────────────────────┘     │   │
                             │   └────────────────────────────────────────────────────────┘   │
                             │                                                                │
                             │   IAM (IRSA: LBC · Cluster Autoscaler)  ·  S3 (TF state)       │
@@ -72,14 +76,15 @@ task grafana-password
 ## Available Tasks
 
 ```
-task deploy            Deploy lab (Terraform + Helm + ingress)
-task destroy           Tear down lab (order-safe multi-stage)
-task plan              Show Terraform plan
-task kubeconfig        Add/update cluster in ~/.kube/config
-task alb_dns           Print the ALB DNS name
-task argocd-pf         Port-forward ArgoCD UI → http://127.0.0.1:8080
-task argocd-password   Retrieve ArgoCD admin password
-task grafana-password  Retrieve Grafana admin password
+task deploy                 Deploy lab (Terraform + Helm + ingress)
+task destroy                Tear down lab (order-safe multi-stage)
+task plan                   Show Terraform plan
+task kubeconfig             Add/update cluster in ~/.kube/config
+task alb_dns                Print the ALB DNS name
+task argocd-pf              Port-forward ArgoCD UI → http://127.0.0.1:8080
+task argocd-password        Retrieve ArgoCD admin password
+task grafana-password       Retrieve Grafana admin password
+task publish-http-canary    Build and push http-canary image to Docker Hub (TAG=<tag>, default: latest)
 ```
 
 ## Repository Layout
@@ -93,13 +98,17 @@ task grafana-password  Retrieve Grafana admin password
 │   ├── output.tf             # aws_lbc_role_arn, vpc_id, alb_security_group_id, cluster_autoscaler_role_arn
 │   ├── backend.tf            # S3 remote state (us-east-1)
 │   └── versions.tf           # Terraform >= 1.0, AWS ~> 6
-├── manifests/                # Raw K8s manifests applied by Taskfile
+├── manifests/                # Raw K8s manifests (ingresses applied by Taskfile; others managed by ArgoCD)
 │   ├── argocd-ingress.yaml   # ArgoCD ALB ingress (envsubst for SG ID)
-│   └── grafana-ingress.yaml  # Grafana ALB ingress (envsubst for SG ID)
-└── apps/                     # ArgoCD Application manifests (GitOps)
-    ├── root.yaml             # Root app that bootstraps all other apps
-    ├── kube-prometheus-stack.yaml  # Prometheus + Grafana monitoring stack
-    └── otel-demo.yaml        # OpenTelemetry demo app
+│   ├── grafana-ingress.yaml  # Grafana ALB ingress (envsubst for SG ID)
+│   └── http-canary.yaml      # http-canary Deployment/Service/ServiceMonitor (managed by ArgoCD)
+├── apps/                     # ArgoCD Application manifests (GitOps)
+│   ├── root.yaml             # Root app that bootstraps all other apps
+│   ├── kube-prometheus-stack.yaml  # Prometheus + Grafana monitoring stack
+│   ├── otel-demo.yaml        # OpenTelemetry demo app
+│   └── http-canary.yaml      # HTTP canary app with custom Prometheus metrics
+└── src/
+    └── http-canary/          # Source for the http-canary Docker image (published to Docker Hub)
 ```
 
 ## Bootstrap Sequence
@@ -130,7 +139,7 @@ task grafana-password  Retrieve Grafana admin password
 
 The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/otel-demo.yaml` is a working example.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/otel-demo.yaml` and `apps/http-canary.yaml` are working examples.
 
 ## Infrastructure Module
 
