@@ -9,6 +9,21 @@ spec:
     repoURL: https://grafana.github.io/helm-charts
     chart: tempo
     targetRevision: 1.24.4
+    helm:
+      values: |
+        tempo:
+          storage:
+            trace:
+              backend: local
+              local:
+                path: /var/tempo/traces
+          extraVolumeMounts:
+            - name: tempo-traces
+              mountPath: /var/tempo/traces
+
+        extraVolumes:
+          - name: tempo-traces
+            emptyDir: {}
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
