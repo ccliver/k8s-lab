@@ -11,6 +11,14 @@ spec:
     targetRevision: 0.40.3
     helm:
       releaseName: otel-demo
+      values: |
+        opentelemetry-collector:
+          enabled: false
+
+        default:
+          envOverrides:
+            - name: OTEL_COLLECTOR_NAME
+              value: otel-collector.monitoring.svc.cluster.local
   destination:
     server: https://kubernetes.default.svc
     namespace: otel-demo
