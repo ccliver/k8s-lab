@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-collector
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-collector
+    targetRevision: 0.146.1
+    helm:
+      releaseName: otel-collector
+      values: |
+        mode: deployment
+
+        config:
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: ${env:MY_POD_IP}:4317
+                http:
+                  endpoint: ${env:MY_POD_IP}:4318
+
+          exporters:
+            otlp:
+              endpoint: tempo:4317
+              tls:
+                insecure: true
+
+          service:
+            pipelines:
+              traces:
+                receivers: [otlp]
+                processors: [memory_limiter, batch]
+                exporters: [otlp]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
