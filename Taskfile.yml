@@ -126,6 +126,7 @@ tasks:
         --namespace kube-system \
         --set autoDiscovery.clusterName=k8s-lab \
         --set awsRegion=us-east-1 \
+        --set rbac.serviceAccount.name=cluster-autoscaler \
         --set rbac.serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=$(terraform -chdir=terraform output -raw cluster_autoscaler_role_arn)
 
   helm-install-argocd:
