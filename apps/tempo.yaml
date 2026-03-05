@@ -12,6 +12,12 @@ spec:
     helm:
       values: |
         tempo:
+          ingester:
+            lifecycler:
+              ring:
+                kvstore:
+                  store: inmemory
+                replication_factor: 1
           storage:
             trace:
               backend: local
