@@ -12,6 +12,9 @@ spec:
     helm:
       releaseName: otel-collector
       values: |
+        image:
+          repository: otel/opentelemetry-collector-k8s
+
         mode: deployment
 
         config:
@@ -19,9 +22,9 @@ spec:
             otlp:
               protocols:
                 grpc:
-                  endpoint: ${env:MY_POD_IP}:4317
+                  endpoint: 0.0.0.0:4317
                 http:
-                  endpoint: ${env:MY_POD_IP}:4318
+                  endpoint: 0.0.0.0:4318
 
           exporters:
             otlp:
@@ -33,7 +36,6 @@ spec:
             pipelines:
               traces:
                 receivers: [otlp]
-                processors: [memory_limiter, batch]
                 exporters: [otlp]
   destination:
     server: https://kubernetes.default.svc
