@@ -17,6 +17,11 @@ spec:
             server:
               root_url: "%(protocol)s://%(domain)s/grafana"
               serve_from_sub_path: true
+          additionalDataSources:
+            - name: Tempo
+              type: tempo
+              access: proxy
+              url: http://tempo:3200
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
