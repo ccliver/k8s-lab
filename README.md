@@ -23,14 +23,10 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
                             │   │  │     scaler           │  └──────────────────────┘    │   │
                             │   │  └──────────────────────┘                              │   │
                             │   │  ┌──────────────────────┐  ┌─────────────────────┐     │   │
-                            │   │  │   ns: monitoring     │  │    ns: otel-demo    │     │   │
-                            │   │  │   · Prometheus       │  │  · OTel Demo App    │     │   │
-                            │   │  │   · Grafana          │  └─────────────────────┘     │   │
-                            │   │  └──────────────────────┘  ┌─────────────────────┐     │   │
-                            │   │                            │   ns: http-canary   │     │   │
-                            │   │                            │  · HTTP Canary      │     │   │
-                            │   │                            │    (custom metrics) │     │   │
-                            │   │                            └─────────────────────┘     │   │
+                            │   │  │   ns: monitoring     │  │   ns: http-canary   │     │   │
+                            │   │  │   · Prometheus       │  │  · HTTP Canary      │     │   │
+                            │   │  │   · Grafana          │  │    (custom metrics) │     │   │
+                            │   │  └──────────────────────┘  └─────────────────────┘     │   │
                             │   └────────────────────────────────────────────────────────┘   │
                             │                                                                │
                             │   IAM (IRSA: LBC · Cluster Autoscaler)  ·  S3 (TF state)       │
@@ -105,7 +101,6 @@ task publish-http-canary    Build and push http-canary image to Docker Hub (TAG=
 ├── apps/                     # ArgoCD Application manifests (GitOps)
 │   ├── root.yaml             # Root app that bootstraps all other apps
 │   ├── kube-prometheus-stack.yaml  # Prometheus + Grafana monitoring stack
-│   ├── otel-demo.yaml        # OpenTelemetry demo app
 │   └── http-canary.yaml      # HTTP canary app with custom Prometheus metrics
 └── src/
     └── http-canary/          # Source for the http-canary Docker image (published to Docker Hub)
@@ -139,7 +134,7 @@ task publish-http-canary    Build and push http-canary image to Docker Hub (TAG=
 
 The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/otel-demo.yaml` and `apps/http-canary.yaml` are working examples.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/http-canary.yaml` is a working example.
 
 ## Infrastructure Module
 

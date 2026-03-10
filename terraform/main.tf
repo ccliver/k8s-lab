@@ -8,7 +8,7 @@ locals {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.14.1"
+  version = "1.15.0"
 
   use_eks                        = true
   project                        = local.project
@@ -17,7 +17,7 @@ module "k8s_lab" {
   eks_max_size                   = 6
   instance_types                 = ["t4g.medium"]
   kubernetes_version             = "1.34"
-  eks_capacity_type              = "SPOT"
+  eks_capacity_type              = "ON_DEMAND"
   eks_node_group_ami_type        = "AL2023_ARM_64_STANDARD"
   deploy_aws_lbc_role            = true
   alb_allowed_cidrs              = var.alb_allowed_cidrs

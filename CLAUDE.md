@@ -74,7 +74,6 @@ The `task destroy` sequence is order-sensitive to avoid orphaned AWS resources:
 `apps/` holds ArgoCD `Application` manifests:
 - `root.yaml` — root app that bootstraps all other apps
 - `kube-prometheus-stack.yaml` — Prometheus + Grafana monitoring stack
-- `otel-demo.yaml` — OpenTelemetry demo app
 - `http-canary.yaml` — HTTP canary app that generates custom Prometheus metrics
 
 `manifests/` holds raw Kubernetes manifests. The ingress manifests are applied by the Taskfile; `http-canary.yaml` is managed by ArgoCD:
