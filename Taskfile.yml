@@ -33,10 +33,17 @@ tasks:
       - task: delete-argocd-apps
       - task: delete-ingress
       - task: drain-and-destroy-nodes
-      - task: terraform-destroy
+      - task: tf-destroy
       - task: cleanup-orphaned-enis
 
-  plan:
+  tf-init:
+    desc: Initialize terraform
+    dir: terraform
+    silent: true
+    cmds:
+      - terraform init -backend-config=backend.hcl
+
+  tf-plan:
     desc: Show terraform plan
     dir: terraform
     silent: true
@@ -171,7 +178,7 @@ tasks:
       - sleep 90
       - terraform -chdir=terraform destroy -target='module.k8s_lab.module.eks[0].module.eks.module.eks_managed_node_group["default"]' -auto-approve
 
-  terraform-destroy:
+  tf-destroy:
     dir: terraform
     silent: true
     cmds:

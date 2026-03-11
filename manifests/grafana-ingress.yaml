@@ -12,6 +12,7 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
     alb.ingress.kubernetes.io/healthcheck-path: /api/health
     alb.ingress.kubernetes.io/healthcheck-port: "3000"
+    alb.ingress.kubernetes.io/tags: Environment=Lab
     kubernetes.io/ingress.class: alb
 spec:
   ingressClassName: alb
