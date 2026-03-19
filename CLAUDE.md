@@ -13,7 +13,7 @@ All day-to-day operations use `task` (Taskfile runner):
 ```bash
 task deploy           # full deploy: terraform + helm + ingresses + ArgoCD bootstrap
 task destroy          # multi-stage teardown (see below)
-task plan             # terraform plan
+task tf-plan          # terraform plan
 task kubeconfig       # update ~/.kube/config for the cluster
 
 task argocd-pf        # port-forward ArgoCD UI to http://127.0.0.1:8080
@@ -45,41 +45,15 @@ Resources provisioned:
 - **EKS cluster** via the `ccliver/k8s-lab/aws` Terraform registry module (cluster name: `k8s-lab`, Kubernetes 1.34)
   - Nodes: `t4g.medium` SPOT, ARM/Graviton, AL2023, min 3 / max 6
 
-`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, and `cluster_autoscaler_role_arn` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
+`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, `cluster_autoscaler_role_arn`, and `ebs_csi_role_arn` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
 
-### Bootstrap Sequence (post-`terraform apply`)
+### Bootstrap / Destroy Sequences
 
-`task deploy` runs tf-apply then the full Kubernetes-layer bootstrap in order:
-1. `kubeconfig` — update `~/.kube/config`
-2. `wait-for-nodes` — `kubectl wait` until all nodes are Ready
-3. `helm-install-lbc` — install AWS Load Balancer Controller into `kube-system` with IRSA annotation from Terraform output
-4. `helm-install-cluster-autoscaler` — install Cluster Autoscaler into `kube-system` with IRSA annotation from Terraform output
-5. `helm-install-argocd` — install ArgoCD into `argocd` namespace, ClusterIP, TLS disabled (`--insecure`, `--basehref=/argocd`, `--rootpath=/argocd`)
-6. `apply-argocd-ingress` — `envsubst` populates `${ALB_SECURITY_GROUP_ID}` in `manifests/argocd-ingress.yaml` then `kubectl apply`
-7. `apply-grafana-ingress` — creates `monitoring` namespace and applies `manifests/grafana-ingress.yaml`
-8. `bootstrap-argocd` — `kubectl apply -f apps/root.yaml`
-
-### Destroy Process
-
-The `task destroy` sequence is order-sensitive to avoid orphaned AWS resources:
-1. `kubeconfig` — ensure kubeconfig is current
-2. `delete-argocd-apps` — delete ArgoCD root app and wait for cleanup (up to 5m + 30s)
-3. `delete-ingress` — delete ArgoCD and Grafana ingresses → wait 300s for ALB deregistration
-4. `drain-and-destroy-nodes` — drain nodes → wait 90s for VPC CNI cleanup → targeted destroy of node group
-5. `terraform-destroy` — `terraform destroy`
-6. `cleanup-orphaned-enis` — delete ENIs tagged with the cluster name
+See `Taskfile.yml` for the full ordered task sequences. `task deploy` and `task destroy` are order-sensitive — don't reorder steps.
 
 ### GitOps / Applications
 
-`apps/` holds ArgoCD `Application` manifests:
-- `root.yaml` — root app that bootstraps all other apps
-- `kube-prometheus-stack.yaml` — Prometheus + Grafana monitoring stack
-- `http-canary.yaml` — HTTP canary app that generates custom Prometheus metrics
-
-`manifests/` holds raw Kubernetes manifests. The ingress manifests are applied by the Taskfile; `http-canary.yaml` is managed by ArgoCD:
-- `argocd-ingress.yaml` — uses `${ALB_SECURITY_GROUP_ID}` as an `envsubst` placeholder
-- `grafana-ingress.yaml` — uses `${ALB_SECURITY_GROUP_ID}` as an `envsubst` placeholder
-- `http-canary.yaml` — Deployment, Service, and ServiceMonitor for the http-canary app
+`apps/` contains ArgoCD `Application` manifests (app-of-apps pattern). `manifests/` contains raw Kubernetes manifests — ingresses and StorageClasses are applied by the Taskfile; everything else is managed by ArgoCD. See the directory for current contents.
 
 `src/http-canary/` holds the Python source and Dockerfile for the `ccliver/http-canary` Docker image. Build and publish with `task publish-http-canary` (supports multi-arch: amd64 + arm64).
 
@@ -91,3 +65,18 @@ The `task destroy` sequence is order-sensitive to avoid orphaned AWS resources:
 ## Pre-commit Hooks
 
 `.pre-commit-config.yaml` enforces `terraform fmt`, `terraform validate`, `tflint`, merge-conflict checks, and EOF newlines on every commit.
+
+## Documentation Policy
+
+When manifests, Taskfile tasks, or Terraform resources change, check whether `README.md` and `CLAUDE.md` need updating — file trees, bootstrap sequences, task lists, and architecture descriptions should stay in sync with reality. Don't wait to be asked.
+
+## Change Boundaries
+
+- **Do not edit code to fix infrastructure state issues** (stale Terraform state, stuck ArgoCD apps, cluster state). Ask the user first — they usually prefer to handle these manually.
+- Prefer minimal, targeted changes. A bug fix doesn't need surrounding refactors; a manifest addition doesn't need restructuring of other files.
+
+## Docker & CI Notes
+
+- Nodes are `t4g.medium` ARM/Graviton running AL2023 — use `dnf`/`yum`, **not** `apt-get`, in any Dockerfiles targeting these nodes.
+- The default `docker` driver does not support multi-platform builds. The `publish-http-canary` task handles this with `docker buildx create --name multiplatform --use`, but replicate this pattern for any new multi-platform builds.
+- Always specify `--platform linux/arm64` (or `linux/amd64,linux/arm64` for multi-arch) when building images intended for t4g instances.
