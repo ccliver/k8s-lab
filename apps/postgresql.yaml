@@ -12,6 +12,8 @@ spec:
     helm:
       releaseName: postgresql
       values: |
+        global:
+          imageRegistry: ghcr.io
         architecture: standalone
         auth:
           postgresPassword: ""

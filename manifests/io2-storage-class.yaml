@@ -9,6 +9,7 @@ parameters:
   type: io2
   iops: "3000"
   encrypted: "true"
+  tagSpecification_1: "Environment=Lab"
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
 allowVolumeExpansion: true
