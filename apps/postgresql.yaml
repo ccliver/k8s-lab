@@ -3,30 +3,16 @@ kind: Application
 metadata:
   name: postgresql
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
-    repoURL: oci://registry-1.docker.io/bitnamicharts
-    chart: postgresql
-    targetRevision: 16.4.6
-    helm:
-      releaseName: postgresql
-      values: |
-        architecture: standalone
-        auth:
-          postgresPassword: ""
-          database: lab
-        primary:
-          persistence:
-            storageClass: ebs-gp3
-            size: 8Gi
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
+    repoURL: https://github.com/ccliver/k8s-lab
+    targetRevision: main
+    path: manifests
+    directory:
+      include: postgresql-cluster.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: postgresql
