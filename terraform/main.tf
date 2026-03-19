@@ -8,7 +8,7 @@ locals {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.16.0"
+  version = "1.16.2"
 
   use_eks                        = true
   project                        = local.project
@@ -23,4 +23,5 @@ module "k8s_lab" {
   alb_allowed_cidrs              = var.alb_allowed_cidrs
   deploy_cluster_autoscaler_role = true
   environment                    = "Lab"
+  deploy_ebs_csi_role            = true
 }

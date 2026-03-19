@@ -17,3 +17,8 @@ output "cluster_autoscaler_role_arn" {
   description = "IAM role ARN for the Cluster Autoscaler service account"
   value       = module.k8s_lab.cluster_autoscaler_role_arn
 }
+
+output "ebs_csi_role_arn" {
+  description = "IAM role ARN for the EBS CSI Driver service account"
+  value       = module.k8s_lab.ebs_csi_role_arn
+}

@@ -20,9 +20,12 @@ tasks:
       - task: wait-for-nodes
       - task: helm-install-lbc
       - task: helm-install-cluster-autoscaler
+      - task: helm-install-ebs-csi
       - task: helm-install-argocd
       - task: apply-argocd-ingress
       - task: apply-grafana-ingress
+      - task: apply-gp3-storage-class
+      - task: apply-io2-storage-class
       - task: bootstrap-argocd
 
   destroy:
@@ -96,6 +99,13 @@ tasks:
           --push \
           src/http-canary/
 
+  tf-outputs:
+    desc: Show terraform outputs
+    dir: terraform
+    silent: true
+    cmds:
+      - terraform output
+
   tf-apply:
     dir: terraform
     silent: true
@@ -136,6 +146,19 @@ tasks:
         --set rbac.serviceAccount.name=cluster-autoscaler \
         --set rbac.serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=$(terraform -chdir=terraform output -raw cluster_autoscaler_role_arn)
 
+  helm-install-ebs-csi:
+    silent: true
+    cmds:
+      - helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+      - helm repo update aws-ebs-csi-driver
+      - |
+        helm upgrade --install aws-ebs-csi-driver aws-ebs-csi-driver/aws-ebs-csi-driver \
+          -n kube-system \
+          --set controller.serviceAccount.create=true \
+          --set controller.serviceAccount.name=ebs-csi-controller-sa \
+          --set "controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform -chdir=terraform output -raw ebs_csi_role_arn)" \
+          --wait
+
   helm-install-argocd:
     silent: true
     cmds:
@@ -161,6 +184,17 @@ tasks:
     cmds:
       - kubectl create namespace monitoring
       - ALB_SECURITY_GROUP_ID=$(terraform -chdir=terraform output -raw alb_security_group_id) envsubst < manifests/grafana-ingress.yaml | kubectl apply -f -
+
+  apply-gp3-storage-class:
+    silent: true
+    cmds:
+      - kubectl annotate storageclass gp2 storageclass.kubernetes.io/is-default-class=false
+      - kubectl apply -f manifests/gp3-storage-class.yaml
+
+  apply-io2-storage-class:
+    silent: true
+    cmds:
+      - kubectl apply -f manifests/io2-storage-class.yaml
 
   delete-ingress:
     silent: true
