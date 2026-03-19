@@ -6,16 +6,12 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://charts.bitnami.com/bitnami
+    repoURL: oci://registry-1.docker.io/bitnamicharts
     chart: postgresql
-    targetRevision: 16.3.4
+    targetRevision: 16.4.6
     helm:
       releaseName: postgresql
       values: |
-        global:
-          imageRegistry: ghcr.io
-          security:
-            allowInsecureImages: true
         architecture: standalone
         auth:
           postgresPassword: ""
