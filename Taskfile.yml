@@ -26,6 +26,8 @@ tasks:
       - task: apply-grafana-ingress
       - task: apply-gp3-storage-class
       - task: apply-io2-storage-class
+      - task: install-volume-snapshot-crds
+      - task: apply-ebs-volume-snapshot-class
       - task: bootstrap-argocd
 
   destroy:
@@ -157,6 +159,7 @@ tasks:
           --set controller.serviceAccount.create=true \
           --set controller.serviceAccount.name=ebs-csi-controller-sa \
           --set "controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform -chdir=terraform output -raw ebs_csi_role_arn)" \
+          --set sidecars.snapshotter.forceEnable=true \
           --wait
 
   helm-install-argocd:
@@ -222,6 +225,24 @@ tasks:
     silent: true
     cmds:
       - aws ec2 describe-network-interfaces --filters Name=tag:cluster.k8s.amazonaws.com/name,Values=k8s-lab --query NetworkInterfaces[*].NetworkInterfaceId --output text | xargs -r -n1 aws ec2 delete-network-interface --network-interface-id
+
+  install-volume-snapshot-crds:
+    desc: Install VolumeSnapshot CRDs and snapshot controller
+    silent: true
+    vars:
+      SNAPSHOTTER_VERSION: v8.2.0
+    cmds:
+      - |
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/{{.SNAPSHOTTER_VERSION}}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/{{.SNAPSHOTTER_VERSION}}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/{{.SNAPSHOTTER_VERSION}}/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/{{.SNAPSHOTTER_VERSION}}/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/{{.SNAPSHOTTER_VERSION}}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml
+
+  apply-ebs-volume-snapshot-class:
+    silent: true
+    cmds:
+      - kubectl apply -f manifests/ebs-volume-snapshot-class.yaml
 
   bootstrap-argocd:
     silent: true
