@@ -21,11 +21,13 @@ tasks:
       - task: helm-install-lbc
       - task: helm-install-cluster-autoscaler
       - task: helm-install-ebs-csi
+      - task: helm-install-efs-csi
       - task: helm-install-argocd
       - task: apply-argocd-ingress
       - task: apply-grafana-ingress
       - task: apply-gp3-storage-class
       - task: apply-io2-storage-class
+      - task: apply-efs-storage-class
       - task: install-volume-snapshot-crds
       - task: apply-ebs-volume-snapshot-class
       - task: bootstrap-argocd
@@ -81,7 +83,7 @@ tasks:
     cmds:
       - kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 
-  alb_dns:
+  alb-dns:
     desc: Print out the ALB DNS name
     silent: true
     cmds:
@@ -162,6 +164,19 @@ tasks:
           --set sidecars.snapshotter.forceEnable=true \
           --wait
 
+  helm-install-efs-csi:
+    silent: true
+    cmds:
+      - helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver
+      - helm repo update aws-efs-csi-driver
+      - |
+        helm upgrade --install aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
+          -n kube-system \
+          --set controller.serviceAccount.create=true \
+          --set controller.serviceAccount.name=efs-csi-controller-sa \
+          --set "controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform -chdir=terraform output -raw efs_csi_role_arn)" \
+          --wait
+
   helm-install-argocd:
     silent: true
     cmds:
@@ -198,6 +213,11 @@ tasks:
     silent: true
     cmds:
       - kubectl apply -f manifests/io2-storage-class.yaml
+
+  apply-efs-storage-class:
+    silent: true
+    cmds:
+      - EFS_FILE_SYSTEM_ID=$(terraform -chdir=terraform output -raw efs_file_system_id) envsubst < manifests/efs-storage-class.yaml | kubectl apply -f -
 
   delete-ingress:
     silent: true

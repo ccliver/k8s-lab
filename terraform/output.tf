@@ -22,3 +22,13 @@ output "ebs_csi_role_arn" {
   description = "IAM role ARN for the EBS CSI Driver service account"
   value       = module.k8s_lab.ebs_csi_role_arn
 }
+
+output "efs_csi_role_arn" {
+  description = "IAM role ARN for the EFS CSI Driver service account"
+  value       = module.k8s_lab.efs_csi_role_arn
+}
+
+output "efs_file_system_id" {
+  description = "The ID of the EFS file system created for the EFS CSI Driver"
+  value       = module.k8s_lab.efs_file_system_id
+}
