@@ -8,7 +8,7 @@ locals {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.17.5"
+  version = "1.17.7"
 
   use_eks                        = true
   project                        = local.project
