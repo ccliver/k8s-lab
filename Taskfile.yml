@@ -71,6 +71,13 @@ tasks:
       - echo http://127.0.0.1:8080
       - kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:443 > /dev/null
 
+  k8s-lab-status-pf:
+    desc: Setup local port forwarding to the k8s-lab-status pod
+    silent: true
+    cmds:
+      - echo http://127.0.0.1:8000
+      - kubectl port-forward -n k8s-lab-status svc/k8s-lab-status 8000:8000 > /dev/null
+
   argocd-password:
     desc: Get the default admin password for ArgoCD
     silent: true
