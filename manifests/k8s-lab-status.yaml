@@ -22,7 +22,7 @@ metadata:
   name: k8s-lab-status
   namespace: k8s-lab-status
 data:
-  MONITOR_URLS: "https://www.google.com,https://httpbin.org/status/200,http://argo-cd-argocd-server.argocd,http://kube-prometheus-stack-grafana.monitoring"
+  MONITOR_URLS: "https://www.google.com,https://httpbin.org/status/200,http://argo-cd-argocd-server.argocd,http://kube-prometheus-stack-grafana.monitoring:3000"
   CHECK_INTERVAL: "30"
   RESULTS_PATH: "/data/results"
 ---
