@@ -38,6 +38,7 @@ tasks:
     cmds:
       - task: kubeconfig
       - task: delete-argocd-apps
+      - task: delete-postgresql-pvc
       - task: delete-ingress
       - task: drain-and-destroy-nodes
       - task: tf-destroy
@@ -283,3 +284,9 @@ tasks:
       - kubectl delete application root -n argocd --wait=true --timeout=5m || true
       - echo "Waiting for app cleanup..."
       - sleep 30
+
+  delete-postgresql-pvc:
+    desc: Delete PostgreSQL PVCs so the EBS CSI driver can clean up the volumes before node teardown
+    silent: true
+    cmds:
+      - kubectl delete pvc --all -n postgresql --ignore-not-found=true --wait=true --timeout=2m
