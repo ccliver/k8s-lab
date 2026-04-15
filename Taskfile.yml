@@ -32,7 +32,6 @@ tasks:
       - task: install-volume-snapshot-crds
       - task: apply-ebs-volume-snapshot-class
       - task: apply-fake-api-key-secret-provider-class
-      - task: apply-k8s-lab-status-service-account
       - task: bootstrap-argocd
 
   destroy:
@@ -298,11 +297,6 @@ tasks:
     silent: true
     cmds:
       - kubectl apply -f manifests/fake-api-key-secret-provider-class.yaml
-
-  apply-k8s-lab-status-service-account:
-    silent: true
-    cmds:
-      - K8S_LAB_STATUS_ROLE_ARN=$(terraform -chdir=terraform output -raw secretsmanager_role_arn) envsubst < manifests/k8s-lab-status-service-account.yaml | kubectl apply -f -
 
   bootstrap-argocd:
     silent: true

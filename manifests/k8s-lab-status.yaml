@@ -16,6 +16,14 @@ spec:
         objectType: "secretsmanager"
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-lab-status
+  namespace: k8s-lab-status
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::407462665925:role/k8s-lab-status
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: k8s-lab-status-efs
