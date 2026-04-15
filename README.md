@@ -32,9 +32,14 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
                             │   │  │   · CloudNativePG    │  │  · PostgreSQL       │     │   │
                             │   │  │     Operator         │  │    Cluster (CNPG)   │     │   │
                             │   │  └──────────────────────┘  └─────────────────────┘     │   │
+                            │   │  ┌─────────────────────────────────────────────────┐   │   │
+                            │   │  │   ns: k8s-lab-status                            │   │   │
+                            │   │  │   · Status app (Secret Manager CSI + EFS demo)  │   │   │
+                            │   │  └─────────────────────────────────────────────────┘   │   │
                             │   └────────────────────────────────────────────────────────┘   │
                             │                                                                │
-                            │   IAM (IRSA: LBC · Cluster Autoscaler)  ·  S3 (TF state)       │
+                            │   IAM (IRSA: LBC · Cluster Autoscaler · EBS/EFS CSI)           │
+                            │   S3 (TF state)  ·  EFS  ·  Secrets Manager (CSI driver)       │
                             └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -65,7 +70,7 @@ An AWS profile named `lab` must be configured in `~/.aws/credentials` / `~/.aws/
 task deploy
 
 # 3. Get the ALB URL
-task alb_dns
+task alb-dns
 # ArgoCD → http://<alb-dns>/argocd
 # Grafana → http://<alb-dns>/grafana
 
@@ -77,15 +82,16 @@ task grafana-password
 ## Available Tasks
 
 ```
-task deploy                 Deploy lab (Terraform + Helm + ingress)
-task destroy                Tear down lab (order-safe multi-stage)
-task tf-plan                Show Terraform plan
-task kubeconfig             Add/update cluster in ~/.kube/config
-task alb_dns                Print the ALB DNS name
-task argocd-pf              Port-forward ArgoCD UI → http://127.0.0.1:8080
-task argocd-password        Retrieve ArgoCD admin password
-task grafana-password       Retrieve Grafana admin password
-task publish-http-canary    Build and push http-canary image to Docker Hub (TAG=<tag>, default: latest)
+task deploy                  Deploy lab (Terraform + Helm + ingress)
+task destroy                 Tear down lab (order-safe multi-stage)
+task tf-plan                 Show Terraform plan
+task kubeconfig              Add/update cluster in ~/.kube/config
+task alb-dns                 Print the ALB DNS name
+task argocd-pf               Port-forward ArgoCD UI → http://127.0.0.1:8080
+task k8s-lab-status-pf       Port-forward k8s-lab-status app
+task argocd-password         Retrieve ArgoCD admin password
+task grafana-password        Retrieve Grafana admin password
+task publish-http-canary     Build and push http-canary image to Docker Hub (TAG=<tag>, default: latest)
 ```
 
 ## Repository Layout
@@ -100,16 +106,22 @@ task publish-http-canary    Build and push http-canary image to Docker Hub (TAG=
 │   ├── backend.tf            # S3 remote state (us-east-1)
 │   └── versions.tf           # Terraform >= 1.0, AWS ~> 6
 ├── manifests/                # Raw K8s manifests (ingresses/StorageClasses applied by Taskfile; others managed by ArgoCD)
-│   ├── argocd-ingress.yaml   # ArgoCD ALB ingress (envsubst for SG ID)
-│   ├── grafana-ingress.yaml  # Grafana ALB ingress (envsubst for SG ID)
-│   ├── http-canary.yaml      # http-canary Deployment/Service/ServiceMonitor (managed by ArgoCD)
-│   ├── gp3-storage-class.yaml   # gp3 StorageClass (default, replaces gp2)
-│   ├── io2-storage-class.yaml   # io2 StorageClass for high-performance workloads
-│   └── postgresql-cluster.yaml  # CloudNativePG Cluster resource (managed by ArgoCD)
+│   ├── argocd-ingress.yaml              # ArgoCD ALB ingress (envsubst for SG ID)
+│   ├── grafana-ingress.yaml             # Grafana ALB ingress (envsubst for SG ID)
+│   ├── http-canary.yaml                 # http-canary Deployment/Service/ServiceMonitor (managed by ArgoCD)
+│   ├── k8s-lab-status.yaml              # k8s-lab-status app (managed by ArgoCD)
+│   ├── gp3-storage-class.yaml           # gp3 StorageClass (default, replaces gp2)
+│   ├── io2-storage-class.yaml           # io2 StorageClass for high-performance workloads
+│   ├── efs-storage-class.yaml           # EFS StorageClass
+│   ├── ebs-volume-snapshot-class.yaml   # EBS VolumeSnapshotClass
+│   ├── fake-api-key-secret-provider-class.yaml  # SecretProviderClass for Secrets Manager demo
+│   ├── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
+│   └── postgresql-cluster.yaml          # CloudNativePG Cluster resource (managed by ArgoCD)
 ├── apps/                     # ArgoCD Application manifests (GitOps)
 │   ├── root.yaml             # Root app that bootstraps all other apps
 │   ├── kube-prometheus-stack.yaml  # Prometheus + Grafana monitoring stack
 │   ├── http-canary.yaml      # HTTP canary app with custom Prometheus metrics
+│   ├── k8s-lab-status.yaml   # Status app (Secrets Manager CSI + EFS demo)
 │   ├── cloudnativepg-operator.yaml  # CloudNativePG operator (cnpg-system)
 │   └── postgresql.yaml       # PostgreSQL cluster via CloudNativePG (postgresql)
 └── src/
@@ -126,12 +138,18 @@ task publish-http-canary    Build and push http-canary image to Docker Hub (TAG=
 4. **helm-install-lbc** — installs AWS Load Balancer Controller into `kube-system` with IRSA
 5. **helm-install-cluster-autoscaler** — installs Cluster Autoscaler into `kube-system` with IRSA
 6. **helm-install-ebs-csi** — installs AWS EBS CSI Driver into `kube-system` with IRSA
-7. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
-8. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
-9. **apply-grafana-ingress** — creates ALB ingress for Grafana at `/grafana`
-10. **apply-gp3-storage-class** — sets gp3 as default StorageClass (replaces gp2)
-11. **apply-io2-storage-class** — applies io2 StorageClass for high-performance workloads
-12. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
+7. **helm-install-efs-csi** — installs AWS EFS CSI Driver into `kube-system` with IRSA
+8. **helm-install-secrets-manager-csi** — installs Secrets Store CSI Driver (with AWS provider) into `kube-system`
+9. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
+10. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
+11. **apply-grafana-ingress** — creates ALB ingress for Grafana at `/grafana`
+12. **apply-gp3-storage-class** — sets gp3 as default StorageClass (replaces gp2)
+13. **apply-io2-storage-class** — applies io2 StorageClass for high-performance workloads
+14. **apply-efs-storage-class** — applies EFS StorageClass
+15. **install-volume-snapshot-crds** — installs VolumeSnapshot CRDs and snapshot controller
+16. **apply-ebs-volume-snapshot-class** — applies EBS VolumeSnapshotClass
+17. **apply-fake-api-key-secret-provider-class** — applies SecretProviderClass for Secrets Manager demo
+18. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
 
 ## Tear Down
 

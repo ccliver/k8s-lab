@@ -16,10 +16,11 @@ task destroy          # multi-stage teardown (see below)
 task tf-plan          # terraform plan
 task kubeconfig       # update ~/.kube/config for the cluster
 
-task argocd-pf        # port-forward ArgoCD UI to http://127.0.0.1:8080
-task argocd-password  # retrieve ArgoCD admin password
-task grafana-password # retrieve Grafana admin password
-task alb_dns          # print ALB DNS name
+task argocd-pf            # port-forward ArgoCD UI to http://127.0.0.1:8080
+task k8s-lab-status-pf    # port-forward k8s-lab-status app
+task argocd-password      # retrieve ArgoCD admin password
+task grafana-password     # retrieve Grafana admin password
+task alb-dns              # print ALB DNS name
 ```
 
 Terraform directly (from `terraform/`):
