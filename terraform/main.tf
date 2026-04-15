@@ -35,7 +35,7 @@ data "aws_iam_policy_document" "k8s_lab_status_trust" {
     condition {
       test     = "StringEquals"
       variable = "${module.k8s_lab.oidc_provider}:sub"
-      values   = ["system:serviceaccount:kube-system:k8s-lab-status"]
+      values   = ["system:serviceaccount:k8s-lab-status:k8s-lab-status"]
     }
   }
 }

@@ -14,6 +14,7 @@ spec:
     objects: |
       - objectName: "k8s-lab-fake-api-key"
         objectType: "secretsmanager"
+        objectAlias: "api-key"
 ---
 apiVersion: v1
 kind: ServiceAccount
