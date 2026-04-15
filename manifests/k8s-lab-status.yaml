@@ -90,7 +90,7 @@ spec:
             - name: efs
               mountPath: /data/results
             - name: fake-api-key
-              mountPath: /mnt/secrets/api-key
+              mountPath: /mnt/secrets
               readOnly: true
           resources:
             requests:
