@@ -3,6 +3,26 @@ kind: Namespace
 metadata:
   name: k8s-lab-status
 ---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: fake-api-key
+  namespace: k8s-lab-status
+spec:
+  provider: aws
+  parameters:
+    objects: |
+      - objectName: "k8s-lab-fake-api-key"
+        objectType: "secretsmanager"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-lab-status
+  namespace: k8s-lab-status
+  annotations:
+    eks.amazonaws.com/role-arn: ${K8S_LAB_STATUS_ROLE_ARN}
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -43,6 +63,7 @@ spec:
       labels:
         app: k8s-lab-status
     spec:
+      serviceAccountName: k8s-lab-status
       containers:
         - name: k8s-lab-status
           image: ccliver/k8s-lab-status:latest
@@ -67,6 +88,9 @@ spec:
           volumeMounts:
             - name: efs
               mountPath: /data/results
+            - name: fake-api-key
+              mountPath: /mnt/secrets/api-key
+              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -78,6 +102,12 @@ spec:
         - name: efs
           persistentVolumeClaim:
             claimName: k8s-lab-status-efs
+        - name: fake-api-key
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: fake-api-key
 ---
 apiVersion: v1
 kind: Service

@@ -32,3 +32,9 @@ output "efs_file_system_id" {
   description = "The ID of the EFS file system created for the EFS CSI Driver"
   value       = module.k8s_lab.efs_file_system_id
 }
+
+output "secretsmanager_role_arn" {
+  description = "The ARN of the Secrets Manager role to access the fake API key"
+  value       = aws_iam_role.k8s_lab_status.arn
+}
+
