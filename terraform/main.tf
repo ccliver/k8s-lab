@@ -10,7 +10,8 @@ locals {
 }
 
 resource "aws_secretsmanager_secret" "fake_api_key" {
-  name = "${local.project}-fake-api-key"
+  name                    = "${local.project}-fake-api-key"
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "fake_api_key" {
