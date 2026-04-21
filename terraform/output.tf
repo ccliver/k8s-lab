@@ -38,8 +38,3 @@ output "secretsmanager_role_arn" {
   value       = aws_iam_role.k8s_lab_status.arn
 }
 
-output "k8s_lab_status_sg" {
-  description = "ID of the Security Group attached to the k8s-lab-status pods"
-  value       = aws_security_group.k8s_lab_status.id
-}
-
