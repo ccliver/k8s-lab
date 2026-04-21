@@ -1,12 +1,14 @@
 provider "aws" {
   region = "us-east-1"
+  default_tags {
+    tags = {
+      Project = local.project
+    }
+  }
 }
-
-data "aws_region" "current" {}
 
 locals {
   project = "k8s-lab"
-  region  = data.aws_region.current.name
 }
 
 resource "aws_secretsmanager_secret" "fake_api_key" {
@@ -55,15 +57,38 @@ data "aws_iam_policy_document" "k8s_lab_status" {
   }
 }
 
+data "aws_vpc" "k8s_lab" {
+  id = module.k8s_lab.vpc_id
+}
+
 resource "aws_iam_role_policy" "k8s_lab_status" {
   name   = "k8s-lab-status-policy"
   role   = aws_iam_role.k8s_lab_status.id
   policy = data.aws_iam_policy_document.k8s_lab_status.json
 }
 
+resource "aws_security_group" "k8s_lab_status" {
+  name        = "${local.project}-sg"
+  description = "Security group for k8s-lab-status"
+  vpc_id      = module.k8s_lab.vpc_id
+
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.k8s_lab.cidr_block]
+  }
+
+  egress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+  }
+}
+
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.20.0"
+  version = "1.21.1"
 
   use_eks                        = true
   project                        = local.project
@@ -77,7 +102,6 @@ module "k8s_lab" {
   deploy_aws_lbc_role            = true
   alb_allowed_cidrs              = var.alb_allowed_cidrs
   deploy_cluster_autoscaler_role = true
-  environment                    = "Lab"
   deploy_ebs_csi_role            = true
   deploy_efs_csi_role            = true
 }

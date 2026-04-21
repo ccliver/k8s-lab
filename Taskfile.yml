@@ -32,6 +32,7 @@ tasks:
       - task: install-volume-snapshot-crds
       - task: apply-ebs-volume-snapshot-class
       - task: apply-fake-api-key-secret-provider-class
+      - task: apply-k8s-lab-status
       - task: bootstrap-argocd
 
   destroy:
@@ -297,6 +298,11 @@ tasks:
     silent: true
     cmds:
       - kubectl apply -f manifests/fake-api-key-secret-provider-class.yaml
+
+  apply-k8s-lab-status:
+    silent: true
+    cmds:
+      - POD_SG_ID=$(terraform -chdir=terraform output -raw k8s_lab_status_sg) envsubst < manifests/k8s-lab-status.yaml | kubectl apply -f -
 
   bootstrap-argocd:
     silent: true

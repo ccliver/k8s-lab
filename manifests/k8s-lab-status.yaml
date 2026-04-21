@@ -141,3 +141,17 @@ spec:
     - port: http
       path: /metrics
       interval: 60s
+
+---
+apiVersion: vpcresources.k8s.aws/v1beta1
+kind: SecurityGroupPolicy
+metadata:
+  name: k8s-lab-status-sgp
+  namespace: k8s-lab
+spec:
+  podSelector:
+    matchLabels:
+      app: k8s-lab-status
+  securityGroups:
+    securityGroupIds:
+      - ${POD_SG_ID}

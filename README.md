@@ -34,7 +34,8 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
                             │   │  └──────────────────────┘  └─────────────────────┘     │   │
                             │   │  ┌─────────────────────────────────────────────────┐   │   │
                             │   │  │   ns: k8s-lab-status                            │   │   │
-                            │   │  │   · Status app (Secret Manager CSI + EFS demo)  │   │   │
+                            │   │  │   · Status app (Secrets Manager CSI + EFS +     │   │   │
+                            │   │  │     SecurityGroupPolicy; applied by Taskfile)   │   │   │
                             │   │  └─────────────────────────────────────────────────┘   │   │
                             │   └────────────────────────────────────────────────────────┘   │
                             │                                                                │
@@ -105,11 +106,11 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 │   ├── output.tf             # aws_lbc_role_arn, vpc_id, alb_security_group_id, cluster_autoscaler_role_arn
 │   ├── backend.tf            # S3 remote state (us-east-1)
 │   └── versions.tf           # Terraform >= 1.0, AWS ~> 6
-├── manifests/                # Raw K8s manifests (ingresses/StorageClasses applied by Taskfile; others managed by ArgoCD)
+├── manifests/                # Raw K8s manifests (ingresses, StorageClasses, and k8s-lab-status applied by Taskfile; others managed by ArgoCD)
 │   ├── argocd-ingress.yaml              # ArgoCD ALB ingress (envsubst for SG ID)
 │   ├── grafana-ingress.yaml             # Grafana ALB ingress (envsubst for SG ID)
 │   ├── http-canary.yaml                 # http-canary Deployment/Service/ServiceMonitor (managed by ArgoCD)
-│   ├── k8s-lab-status.yaml              # k8s-lab-status app (managed by ArgoCD)
+│   ├── k8s-lab-status.yaml              # k8s-lab-status app + SecurityGroupPolicy (applied by Taskfile via envsubst)
 │   ├── gp3-storage-class.yaml           # gp3 StorageClass (default, replaces gp2)
 │   ├── io2-storage-class.yaml           # io2 StorageClass for high-performance workloads
 │   ├── efs-storage-class.yaml           # EFS StorageClass
@@ -121,7 +122,6 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 │   ├── root.yaml             # Root app that bootstraps all other apps
 │   ├── kube-prometheus-stack.yaml  # Prometheus + Grafana monitoring stack
 │   ├── http-canary.yaml      # HTTP canary app with custom Prometheus metrics
-│   ├── k8s-lab-status.yaml   # Status app (Secrets Manager CSI + EFS demo)
 │   ├── cloudnativepg-operator.yaml  # CloudNativePG operator (cnpg-system)
 │   └── postgresql.yaml       # PostgreSQL cluster via CloudNativePG (postgresql)
 └── src/
@@ -149,7 +149,8 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 15. **install-volume-snapshot-crds** — installs VolumeSnapshot CRDs and snapshot controller
 16. **apply-ebs-volume-snapshot-class** — applies EBS VolumeSnapshotClass
 17. **apply-fake-api-key-secret-provider-class** — applies SecretProviderClass for Secrets Manager demo
-18. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
+18. **apply-k8s-lab-status** — applies k8s-lab-status manifests (including SecurityGroupPolicy) via envsubst with pod SG ID from Terraform
+19. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
 
 ## Tear Down
 
