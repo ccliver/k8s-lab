@@ -67,28 +67,9 @@ resource "aws_iam_role_policy" "k8s_lab_status" {
   policy = data.aws_iam_policy_document.k8s_lab_status.json
 }
 
-resource "aws_security_group" "k8s_lab_status" {
-  name        = "${local.project}-sg"
-  description = "Security group for k8s-lab-status"
-  vpc_id      = module.k8s_lab.vpc_id
-
-  ingress {
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.k8s_lab.cidr_block]
-  }
-
-  egress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-  }
-}
-
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.21.1"
+  version = "1.21.2"
 
   use_eks                        = true
   project                        = local.project
