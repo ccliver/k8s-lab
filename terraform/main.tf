@@ -69,7 +69,7 @@ resource "aws_iam_role_policy" "k8s_lab_status" {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.21.2"
+  version = "1.22.0"
 
   use_eks                        = true
   project                        = local.project
@@ -85,4 +85,5 @@ module "k8s_lab" {
   deploy_cluster_autoscaler_role = true
   deploy_ebs_csi_role            = true
   deploy_efs_csi_role            = true
+  use_pod_identity               = true
 }
