@@ -57,10 +57,6 @@ data "aws_iam_policy_document" "k8s_lab_status" {
   }
 }
 
-data "aws_vpc" "k8s_lab" {
-  id = module.k8s_lab.vpc_id
-}
-
 resource "aws_iam_role_policy" "k8s_lab_status" {
   name   = "k8s-lab-status-policy"
   role   = aws_iam_role.k8s_lab_status.id
