@@ -20,12 +20,8 @@ tasks:
       - task: wait-for-nodes
       - task: helm-install-lbc
       - task: helm-install-cluster-autoscaler
-      - task: helm-install-ebs-csi
-      - task: helm-install-efs-csi
-      - task: helm-install-secrets-manager-csi
       - task: helm-install-argocd
       - task: apply-argocd-ingress
-      - task: apply-grafana-ingress
       - task: apply-gp3-storage-class
       - task: apply-io2-storage-class
       - task: apply-efs-storage-class
@@ -86,12 +82,6 @@ tasks:
     silent: true
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-
-  grafana-password:
-    desc: Get the default admin password for Grafana
-    silent: true
-    cmds:
-      - kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 
   alb-dns:
     desc: Print out the ALB DNS name
@@ -160,52 +150,6 @@ tasks:
         --set rbac.serviceAccount.name=cluster-autoscaler \
         --set rbac.serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=$(terraform -chdir=terraform output -raw cluster_autoscaler_role_arn)
 
-  helm-install-ebs-csi:
-    silent: true
-    cmds:
-      - helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
-      - helm repo update aws-ebs-csi-driver
-      - |
-        helm upgrade --install aws-ebs-csi-driver aws-ebs-csi-driver/aws-ebs-csi-driver \
-          -n kube-system \
-          --set controller.serviceAccount.create=true \
-          --set controller.serviceAccount.name=ebs-csi-controller-sa \
-          --set "controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform -chdir=terraform output -raw ebs_csi_role_arn)" \
-          --set sidecars.snapshotter.forceEnable=true \
-          --wait
-
-  helm-install-efs-csi:
-    silent: true
-    cmds:
-      - helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver
-      - helm repo update aws-efs-csi-driver
-      - |
-        helm upgrade --install aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
-          -n kube-system \
-          --set controller.serviceAccount.create=true \
-          --set controller.serviceAccount.name=efs-csi-controller-sa \
-          --set "controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform -chdir=terraform output -raw efs_csi_role_arn)" \
-          --wait
-
-  helm-install-secrets-manager-csi:
-    silent: true
-    cmds:
-      - helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-      - helm repo update secrets-store-csi-driver
-      - |
-        helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
-          -n kube-system \
-          --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform -chdir=terraform output -raw secrets_manager_csi_role_arn)" \
-          --set "linux.nodeSelector.kubernetes\.io/arch=arm64" \
-          --set-json 'linux.affinity={}' \
-          --wait
-      - helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws
-      - helm repo update aws-secrets-manager
-      - |
-        helm template secrets-provider-aws aws-secrets-manager/secrets-store-csi-driver-provider-aws \
-          -n kube-system \
-          | kubectl apply -f -
-
   helm-install-argocd:
     silent: true
     cmds:
@@ -225,12 +169,6 @@ tasks:
     silent: true
     cmds:
       - ALB_SECURITY_GROUP_ID=$(terraform -chdir=terraform output -raw alb_security_group_id) envsubst < manifests/argocd-ingress.yaml | kubectl apply -f -
-
-  apply-grafana-ingress:
-    silent: true
-    cmds:
-      - kubectl create namespace monitoring
-      - ALB_SECURITY_GROUP_ID=$(terraform -chdir=terraform output -raw alb_security_group_id) envsubst < manifests/grafana-ingress.yaml | kubectl apply -f -
 
   apply-gp3-storage-class:
     silent: true
@@ -252,7 +190,6 @@ tasks:
     silent: true
     cmds:
       - kubectl delete ingress -n argocd argocd-server --ignore-not-found=true
-      - kubectl delete ingress -n monitoring grafana --ignore-not-found=true
       - echo "Waiting for ALB resources to be deleted..."
       - sleep 300
 

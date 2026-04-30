@@ -10,9 +10,9 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
 └──────────┘                │                                                                │
                             │   ┌────────────────────────────────────────────────────────┐   │
                             │   │       ALB  (internet-facing · IngressGroup "lab")      │   │
-                            │   └──────────────────┬──────────────────────┬──────────────┘   │
-                            │                      │ /argocd              │ /grafana         │
-┌──────────┐                │   ┌──────────────────▼──────────────────────▼──────────────┐   │
+                            │   └────────────────────────┬───────────────────────────────┘   │
+                            │                            │ /argocd                           │
+┌──────────┐                │   ┌────────────────────────▼───────────────────────────────┐   │
 │ Git repo │                │   │                 EKS Cluster (k8s-lab)                  │   │
 │  (apps/) │◀── ArgoCD ─────┤   │      K8s 1.34 · t4g.medium SPOT · ARM/Graviton · 3–6   │   │
 └──────────┘                │   │                                                        │   │
@@ -22,11 +22,10 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
                             │   │  │   · Cluster Auto-    │  │    (app-of-apps)     │    │   │
                             │   │  │     scaler           │  └──────────────────────┘    │   │
                             │   │  └──────────────────────┘                              │   │
-                            │   │  ┌──────────────────────┐  ┌─────────────────────┐     │   │
-                            │   │  │   ns: monitoring     │  │   ns: http-canary   │     │   │
-                            │   │  │   · Prometheus       │  │  · HTTP Canary      │     │   │
-                            │   │  │   · Grafana          │  │    (custom metrics) │     │   │
-                            │   │  └──────────────────────┘  └─────────────────────┘     │   │
+                            │   │  ┌──────────────────────────────────────────────────┐  │   │
+                            │   │  │   ns: http-canary                                │  │   │
+                            │   │  │   · HTTP Canary (CloudWatch metrics via boto3)   │  │   │
+                            │   │  └──────────────────────────────────────────────────┘  │   │
                             │   │  ┌──────────────────────┐  ┌─────────────────────┐     │   │
                             │   │  │   ns: cnpg-system    │  │   ns: postgresql    │     │   │
                             │   │  │   · CloudNativePG    │  │  · PostgreSQL       │     │   │
@@ -38,12 +37,13 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
                             │   │  └─────────────────────────────────────────────────┘   │   │
                             │   └────────────────────────────────────────────────────────┘   │
                             │                                                                │
-                            │   IAM (IRSA: LBC · Cluster Autoscaler · EBS/EFS CSI)           │
-                            │   S3 (TF state)  ·  EFS  ·  Secrets Manager (CSI driver)       │
+                            │   IAM (IRSA: LBC · Cluster Autoscaler)                         │
+                            │   S3 (TF state)  ·  EFS  ·  Secrets Manager                    │
+                            │   EKS Addons: EBS CSI · EFS CSI · Secrets Store CSI            │
                             └────────────────────────────────────────────────────────────────┘
 ```
 
-ArgoCD and Grafana share a single internet-facing ALB via an IngressGroup (`lab`), path-routed at `/argocd` and `/grafana`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
+ArgoCD is exposed via a single internet-facing ALB at `/argocd`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
 
 ## Prerequisites
 
@@ -72,11 +72,9 @@ task deploy
 # 3. Get the ALB URL
 task alb-dns
 # ArgoCD → http://<alb-dns>/argocd
-# Grafana → http://<alb-dns>/grafana
 
 # 4. Retrieve default passwords
 task argocd-password
-task grafana-password
 ```
 
 ## Available Tasks
@@ -90,7 +88,6 @@ task alb-dns                 Print the ALB DNS name
 task argocd-pf               Port-forward ArgoCD UI → http://127.0.0.1:8080
 task k8s-lab-status-pf       Port-forward k8s-lab-status app
 task argocd-password         Retrieve ArgoCD admin password
-task grafana-password        Retrieve Grafana admin password
 task publish-http-canary     Build and push http-canary image to Docker Hub (TAG=<tag>, default: latest)
 ```
 
@@ -107,8 +104,7 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 │   └── versions.tf           # Terraform >= 1.0, AWS ~> 6
 ├── manifests/                # Raw K8s manifests (ingresses/StorageClasses applied by Taskfile; others managed by ArgoCD)
 │   ├── argocd-ingress.yaml              # ArgoCD ALB ingress (envsubst for SG ID)
-│   ├── grafana-ingress.yaml             # Grafana ALB ingress (envsubst for SG ID)
-│   ├── http-canary.yaml                 # http-canary Deployment/Service/ServiceMonitor (managed by ArgoCD)
+│   ├── http-canary.yaml                 # http-canary Deployment/Service (managed by ArgoCD)
 │   ├── k8s-lab-status.yaml              # k8s-lab-status app (managed by ArgoCD)
 │   ├── gp3-storage-class.yaml           # gp3 StorageClass (default, replaces gp2)
 │   ├── io2-storage-class.yaml           # io2 StorageClass for high-performance workloads
@@ -119,8 +115,7 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 │   └── postgresql-cluster.yaml          # CloudNativePG Cluster resource (managed by ArgoCD)
 ├── apps/                     # ArgoCD Application manifests (GitOps)
 │   ├── root.yaml             # Root app that bootstraps all other apps
-│   ├── kube-prometheus-stack.yaml  # Prometheus + Grafana monitoring stack
-│   ├── http-canary.yaml      # HTTP canary app with custom Prometheus metrics
+│   ├── http-canary.yaml      # HTTP canary app (CloudWatch metrics via boto3)
 │   ├── cloudnativepg-operator.yaml  # CloudNativePG operator (cnpg-system)
 │   └── postgresql.yaml       # PostgreSQL cluster via CloudNativePG (postgresql)
 └── src/
@@ -136,26 +131,22 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 3. **wait-for-nodes** — waits until all nodes are `Ready`
 4. **helm-install-lbc** — installs AWS Load Balancer Controller into `kube-system` with IRSA
 5. **helm-install-cluster-autoscaler** — installs Cluster Autoscaler into `kube-system` with IRSA
-6. **helm-install-ebs-csi** — installs AWS EBS CSI Driver into `kube-system` with IRSA
-7. **helm-install-efs-csi** — installs AWS EFS CSI Driver into `kube-system` with IRSA
-8. **helm-install-secrets-manager-csi** — installs Secrets Store CSI Driver (with AWS provider) into `kube-system`
-9. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
-10. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
-11. **apply-grafana-ingress** — creates ALB ingress for Grafana at `/grafana`
-12. **apply-gp3-storage-class** — sets gp3 as default StorageClass (replaces gp2)
-13. **apply-io2-storage-class** — applies io2 StorageClass for high-performance workloads
-14. **apply-efs-storage-class** — applies EFS StorageClass
-15. **install-volume-snapshot-crds** — installs VolumeSnapshot CRDs and snapshot controller
-16. **apply-ebs-volume-snapshot-class** — applies EBS VolumeSnapshotClass
-17. **apply-fake-api-key-secret-provider-class** — applies SecretProviderClass for Secrets Manager demo
-18. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
+6. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
+7. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
+8. **apply-gp3-storage-class** — sets gp3 as default StorageClass (replaces gp2)
+9. **apply-io2-storage-class** — applies io2 StorageClass for high-performance workloads
+10. **apply-efs-storage-class** — applies EFS StorageClass
+11. **install-volume-snapshot-crds** — installs VolumeSnapshot CRDs and snapshot controller
+12. **apply-ebs-volume-snapshot-class** — applies EBS VolumeSnapshotClass
+13. **apply-fake-api-key-secret-provider-class** — applies SecretProviderClass for Secrets Manager demo
+14. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
 
 ## Tear Down
 
 `task destroy` runs a safe multi-stage teardown to avoid orphaned AWS resources:
 
 1. Delete ArgoCD root app and wait for all app cleanup (up to 5m + 30s)
-2. Delete ArgoCD and Grafana ingresses → wait 300s for ALB deregistration
+2. Delete ArgoCD ingress → wait 300s for ALB deregistration
 3. Drain all nodes → wait 90s for VPC CNI cleanup → destroy the managed node group
 4. `terraform destroy` — removes remaining AWS resources
 5. Clean up any orphaned ENIs tagged with the cluster name

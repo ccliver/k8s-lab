@@ -43,7 +43,7 @@ metadata:
   name: k8s-lab-status
   namespace: k8s-lab-status
 data:
-  MONITOR_URLS: "https://www.google.com,https://httpbin.org/status/200,http://argo-cd-argocd-server.argocd/healthz,http://kube-prometheus-stack-grafana.monitoring/api/health"
+  MONITOR_URLS: "https://www.google.com,https://httpbin.org/status/200,http://argo-cd-argocd-server.argocd/healthz"
   CHECK_INTERVAL: "30"
   RESULTS_PATH: "/data/results"
 ---
@@ -124,20 +124,3 @@ spec:
     - name: http
       port: 8000
       targetPort: http
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: k8s-lab-status
-  namespace: k8s-lab-status
-  labels:
-    app: k8s-lab-status
-    release: kube-prometheus-stack
-spec:
-  selector:
-    matchLabels:
-      app: k8s-lab-status
-  endpoints:
-    - port: http
-      path: /metrics
-      interval: 60s

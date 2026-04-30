@@ -11,8 +11,6 @@ EXPOSE 8080
 
 ENV PYTHONUNBUFFERED=1
 
-# --workers 1 keeps all Prometheus counters in a single process so the
-# background checker thread and the /metrics handler share the same state.
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:8080", \
      "--workers", "1", \
