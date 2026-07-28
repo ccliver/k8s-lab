@@ -37,4 +37,3 @@ output "secretsmanager_role_arn" {
   description = "The ARN of the Secrets Manager role to access the fake API key"
   value       = aws_iam_role.k8s_lab_status.arn
 }
-

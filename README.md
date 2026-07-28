@@ -92,8 +92,8 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 1. **Terraform apply** — provisions EKS cluster, VPC, IAM roles, ALB security group
 2. **kubeconfig** — updates `~/.kube/config` for the new cluster
 3. **wait-for-nodes** — waits until all nodes are `Ready`
-4. **helm-install-lbc** — installs AWS Load Balancer Controller into `kube-system` with IRSA
-5. **helm-install-cluster-autoscaler** — installs Cluster Autoscaler into `kube-system` with IRSA
+4. **helm-install-lbc** — installs AWS Load Balancer Controller into `kube-system` with pod identity
+5. **helm-install-cluster-autoscaler** — installs Cluster Autoscaler into `kube-system` with pod identity
 6. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
 7. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
 8. **apply-gp3-storage-class** — sets gp3 as default StorageClass (replaces gp2)

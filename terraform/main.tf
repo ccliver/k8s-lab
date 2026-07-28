@@ -24,28 +24,24 @@ resource "aws_secretsmanager_secret_version" "fake_api_key" {
 data "aws_iam_policy_document" "k8s_lab_status_trust" {
   statement {
     principals {
-      type        = "Federated"
-      identifiers = [module.k8s_lab.oidc_provider_arn]
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
     }
 
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-
-    condition {
-      test     = "StringEquals"
-      variable = "${module.k8s_lab.oidc_provider}:aud"
-      values   = ["sts.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "${module.k8s_lab.oidc_provider}:sub"
-      values   = ["system:serviceaccount:k8s-lab-status:k8s-lab-status"]
-    }
+    actions = ["sts:AssumeRole", "sts:TagSession"]
   }
 }
 
 resource "aws_iam_role" "k8s_lab_status" {
   name               = "${local.project}-status"
   assume_role_policy = data.aws_iam_policy_document.k8s_lab_status_trust.json
+}
+
+resource "aws_eks_pod_identity_association" "k8s_lab_status" {
+  cluster_name    = local.project
+  namespace       = "k8s-lab-status"
+  service_account = "k8s-lab-status"
+  role_arn        = aws_iam_role.k8s_lab_status.arn
 }
 
 data "aws_iam_policy_document" "k8s_lab_status" {
