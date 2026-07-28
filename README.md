@@ -4,44 +4,7 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
 
 ## Architecture
 
-```
-┌──────────┐                ┌────────────────────────────────────────────────────────────────┐
-│  Browser │── HTTP:80 ────▶│                               AWS                              │
-└──────────┘                │                                                                │
-                            │   ┌────────────────────────────────────────────────────────┐   │
-                            │   │       ALB  (internet-facing · IngressGroup "lab")      │   │
-                            │   └────────────────────────┬───────────────────────────────┘   │
-                            │                            │ /argocd                           │
-┌──────────┐                │   ┌────────────────────────▼───────────────────────────────┐   │
-│ Git repo │                │   │                 EKS Cluster (k8s-lab)                  │   │
-│  (apps/) │◀── ArgoCD ─────┤   │      K8s 1.34 · t4g.medium SPOT · ARM/Graviton · 3–6   │   │
-└──────────┘                │   │                                                        │   │
-                            │   │  ┌──────────────────────┐  ┌──────────────────────┐    │   │
-                            │   │  │   ns: kube-system    │  │      ns: argocd      │    │   │
-                            │   │  │   · AWS LBC          │  │  · ArgoCD            │    │   │
-                            │   │  │   · Cluster Auto-    │  │    (app-of-apps)     │    │   │
-                            │   │  │     scaler           │  └──────────────────────┘    │   │
-                            │   │  └──────────────────────┘                              │   │
-                            │   │  ┌──────────────────────────────────────────────────┐  │   │
-                            │   │  │   ns: http-canary                                │  │   │
-                            │   │  │   · HTTP Canary (CloudWatch metrics via boto3)   │  │   │
-                            │   │  └──────────────────────────────────────────────────┘  │   │
-                            │   │  ┌──────────────────────┐  ┌─────────────────────┐     │   │
-                            │   │  │   ns: cnpg-system    │  │   ns: postgresql    │     │   │
-                            │   │  │   · CloudNativePG    │  │  · PostgreSQL       │     │   │
-                            │   │  │     Operator         │  │    Cluster (CNPG)   │     │   │
-                            │   │  └──────────────────────┘  └─────────────────────┘     │   │
-                            │   │  ┌─────────────────────────────────────────────────┐   │   │
-                            │   │  │   ns: k8s-lab-status                            │   │   │
-                            │   │  │   · Status app (Secrets Manager CSI + EFS demo) │   │   │
-                            │   │  └─────────────────────────────────────────────────┘   │   │
-                            │   └────────────────────────────────────────────────────────┘   │
-                            │                                                                │
-                            │   IAM (IRSA: LBC · Cluster Autoscaler)                         │
-                            │   S3 (TF state)  ·  EFS  ·  Secrets Manager                    │
-                            │   EKS Addons: EBS CSI · EFS CSI · Secrets Store CSI            │
-                            └────────────────────────────────────────────────────────────────┘
-```
+![k8s-lab architecture diagram](docs/architecture.png)
 
 ArgoCD is exposed via a single internet-facing ALB at `/argocd`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
 
