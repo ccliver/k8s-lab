@@ -65,7 +65,7 @@ resource "aws_iam_role_policy" "k8s_lab_status" {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.22.0"
+  version = "1.23.1"
 
   use_eks                        = true
   project                        = local.project

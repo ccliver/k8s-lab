@@ -45,7 +45,7 @@ Resources provisioned:
 - **EKS cluster** via the `ccliver/k8s-lab/aws` Terraform registry module (cluster name: `k8s-lab`, Kubernetes 1.34)
   - Nodes: `t4g.medium` SPOT, ARM/Graviton, AL2023, min 3 / max 6
 
-`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, `cluster_autoscaler_role_arn`, and `ebs_csi_role_arn` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
+`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, `cluster_autoscaler_role_arn`, `efs_file_system_id`, and `k8s_lab_status_sg` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
 
 ### Bootstrap / Destroy Sequences
 
