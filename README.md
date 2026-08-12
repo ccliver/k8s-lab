@@ -24,19 +24,16 @@ An AWS profile named `lab` must be configured in `~/.aws/credentials` / `~/.aws/
 ## Quick Start
 
 ```bash
-# 1. Set CIDRs allowed to reach the EKS API and ALB (your public IP)
-# Create terraform/terraform.tfvars:
-#   endpoint_public_access_cidrs = ["x.x.x.x/32"]
-#   alb_allowed_cidrs            = ["x.x.x.x/32"]
-
-# 2. Deploy everything (Terraform + LBC + ArgoCD + monitoring)
+# 1. Deploy everything (Terraform + LBC + ArgoCD + monitoring)
+# task deploy first detects your public IP and writes it to terraform/terraform.tfvars
+# (endpoint_public_access_cidrs, alb_allowed_cidrs) before applying
 task deploy
 
-# 3. Get the ALB URL
+# 2. Get the ALB URL
 task alb-dns
 # ArgoCD → http://<alb-dns>/argocd
 
-# 4. Retrieve default passwords
+# 3. Retrieve default passwords
 task argocd-password
 ```
 
@@ -45,6 +42,7 @@ task argocd-password
 ```
 task deploy                  Deploy lab (Terraform + Helm + ingress)
 task destroy                 Tear down lab (order-safe multi-stage)
+task set-my-ip               Detect your public IP and write it to terraform/terraform.tfvars
 task tf-plan                 Show Terraform plan
 task kubeconfig              Add/update cluster in ~/.kube/config
 task alb-dns                 Print the ALB DNS name
@@ -89,20 +87,21 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 
 `task deploy` runs the following in order:
 
-1. **Terraform apply** — provisions EKS cluster, VPC, IAM roles, ALB security group
-2. **kubeconfig** — updates `~/.kube/config` for the new cluster
-3. **wait-for-nodes** — waits until all nodes are `Ready`
-4. **helm-install-lbc** — installs AWS Load Balancer Controller into `kube-system` with pod identity
-5. **helm-install-cluster-autoscaler** — installs Cluster Autoscaler into `kube-system` with pod identity
-6. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
-7. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
-8. **apply-gp3-storage-class** — sets gp3 as default StorageClass (replaces gp2)
-9. **apply-io2-storage-class** — applies io2 StorageClass for high-performance workloads
-10. **apply-efs-storage-class** — applies EFS StorageClass
-11. **install-volume-snapshot-crds** — installs VolumeSnapshot CRDs and snapshot controller
-12. **apply-ebs-volume-snapshot-class** — applies EBS VolumeSnapshotClass
-13. **apply-fake-api-key-secret-provider-class** — applies SecretProviderClass for Secrets Manager demo
-14. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
+1. **set-my-ip** — detects your public IP and writes it to `terraform/terraform.tfvars`
+2. **Terraform apply** — provisions EKS cluster, VPC, IAM roles, ALB security group
+3. **kubeconfig** — updates `~/.kube/config` for the new cluster
+4. **wait-for-nodes** — waits until all nodes are `Ready`
+5. **helm-install-lbc** — installs AWS Load Balancer Controller into `kube-system` with pod identity
+6. **helm-install-cluster-autoscaler** — installs Cluster Autoscaler into `kube-system` with pod identity
+7. **helm-install-argocd** — installs ArgoCD into `argocd` namespace
+8. **apply-argocd-ingress** — creates ALB ingress for ArgoCD at `/argocd`
+9. **apply-gp3-storage-class** — sets gp3 as default StorageClass (replaces gp2)
+10. **apply-io2-storage-class** — applies io2 StorageClass for high-performance workloads
+11. **apply-efs-storage-class** — applies EFS StorageClass
+12. **install-volume-snapshot-crds** — installs VolumeSnapshot CRDs and snapshot controller
+13. **apply-ebs-volume-snapshot-class** — applies EBS VolumeSnapshotClass
+14. **apply-fake-api-key-secret-provider-class** — applies SecretProviderClass for Secrets Manager demo
+15. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
 
 ## Tear Down
 

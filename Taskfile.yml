@@ -15,6 +15,7 @@ tasks:
     desc: Deploy lab (terraform + helm + ingress)
     silent: true
     cmds:
+      - task: set-my-ip
       - task: tf-apply
       - task: kubeconfig
       - task: wait-for-nodes
@@ -41,6 +42,18 @@ tasks:
       - task: drain-and-destroy-nodes
       - task: tf-destroy
       - task: cleanup-orphaned-enis
+
+  set-my-ip:
+    desc: Detect your public IP and write it to terraform/terraform.tfvars
+    silent: true
+    cmds:
+      - |
+        IP=$(curl -s https://checkip.amazonaws.com)
+        cat > terraform/terraform.tfvars <<EOF
+        endpoint_public_access_cidrs = ["${IP}/32"]
+        alb_allowed_cidrs            = ["${IP}/32"]
+        EOF
+        echo "Set terraform.tfvars CIDRs to ${IP}/32"
 
   tf-init:
     desc: Initialize terraform
