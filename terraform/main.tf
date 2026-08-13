@@ -42,6 +42,8 @@ resource "aws_eks_pod_identity_association" "k8s_lab_status" {
   namespace       = "k8s-lab-status"
   service_account = "k8s-lab-status"
   role_arn        = aws_iam_role.k8s_lab_status.arn
+
+  depends_on = [module.k8s_lab]
 }
 
 data "aws_iam_policy_document" "k8s_lab_status" {
