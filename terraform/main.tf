@@ -21,7 +21,7 @@ module "k8s_lab" {
   eks_min_size                   = 3
   eks_max_size                   = 6
   instance_types                 = ["t4g.medium"]
-  kubernetes_version             = "1.34"
+  kubernetes_version             = "1.36"
   eks_capacity_type              = "ON_DEMAND"
   eks_node_group_ami_type        = "AL2023_ARM_64_STANDARD"
   deploy_aws_lbc_role            = true
