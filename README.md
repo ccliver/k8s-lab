@@ -34,6 +34,12 @@ flowchart TB
                 efssc["SC: efs"]
                 vsc["VolumeSnapshotClass: ebs"]
                 nodegroup["managed node group"]
+
+                subgraph ollamans["ollama"]
+                    ollama["ollama server<br/>(llama3.2:1b)"]
+                    ollamapvc["PVC<br/>ollama-data (gp3)"]
+                    ollamaclient["ollama-client<br/>(exec-in CLI pod)"]
+                end
             end
         end
     end
@@ -54,6 +60,10 @@ flowchart TB
     efscsi --> efssc
     efssc --> efs
     snap --> vsc
+
+    ollama --> ollamapvc
+    ollamapvc -. gp3 .-> gp3
+    ollamaclient -- "OLLAMA_HOST=ollama:11434" --> ollama
 ```
 
 ArgoCD is exposed via a single internet-facing ALB at `/argocd`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
@@ -98,6 +108,7 @@ task kubeconfig              Add/update cluster in ~/.kube/config
 task alb-dns                 Print the ALB DNS name
 task argocd-pf               Port-forward ArgoCD UI → http://127.0.0.1:8080
 task argocd-password         Retrieve ArgoCD admin password
+task ollama-exec             Exec into the Ollama client pod to run the ollama CLI
 ```
 
 ## Repository Layout
@@ -117,9 +128,11 @@ task argocd-password         Retrieve ArgoCD admin password
 │   ├── io2-storage-class.yaml           # io2 StorageClass for high-performance workloads
 │   ├── efs-storage-class.yaml           # EFS StorageClass
 │   ├── ebs-volume-snapshot-class.yaml   # EBS VolumeSnapshotClass
-│   └── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
+│   ├── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
+│   └── ollama.yaml                      # Ollama server + PVC + Service + client pod (managed by ArgoCD)
 └── apps/                     # ArgoCD Application manifests (GitOps)
-    └── root.yaml             # Root app that bootstraps all other apps
+    ├── root.yaml             # Root app that bootstraps all other apps
+    └── ollama.yaml           # Ollama app (ollama namespace)
 ```
 
 ## Bootstrap Sequence
@@ -155,7 +168,7 @@ task argocd-password         Retrieve ArgoCD admin password
 
 The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/ollama.yaml` is a working example.
 
 ## Infrastructure Module
 
