@@ -105,6 +105,8 @@ spec:
           env:
             - name: OLLAMA_BASE_URL
               value: http://ollama:11434
+            - name: WEBUI_AUTH
+              value: "False"
           resources:
             requests:
               cpu: 250m
