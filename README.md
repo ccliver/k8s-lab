@@ -4,7 +4,57 @@ A Kubernetes lab on AWS EKS for CKA studying and exploring tools in the Kubernet
 
 ## Architecture
 
-![k8s-lab architecture diagram](docs/architecture.png)
+```mermaid
+flowchart TB
+    user(["operator / browser"])
+    github[("github.com/ccliver/k8s-lab")]
+
+    subgraph aws["AWS Account — us-east-1 (Terraform)"]
+        iam["IAM roles<br/>(EKS Pod Identity)"]
+        efs[("EFS filesystem")]
+
+        subgraph vpc["VPC"]
+            alb["ALB<br/>(argocd ingress)"]
+
+            subgraph eks["EKS Cluster: k8s-lab (v1.34)<br/>t4g.medium ARM SPOT, 3-6 nodes"]
+                subgraph kubesystem["kube-system"]
+                    lbc["aws-load-balancer-controller"]
+                    ca["cluster-autoscaler"]
+                    ebscsi["ebs-csi-driver"]
+                    efscsi["efs-csi-driver"]
+                    snap["snapshot-controller"]
+                end
+
+                subgraph argocdns["argocd"]
+                    argocd["argo-cd server<br/>(app-of-apps)"]
+                end
+
+                gp3["SC: gp3 (default)"]
+                io2["SC: io2"]
+                efssc["SC: efs"]
+                vsc["VolumeSnapshotClass: ebs"]
+                nodegroup["managed node group"]
+            end
+        end
+    end
+
+    user -- https --> alb
+    alb -- HTTPS --> argocd
+    github -- "git sync (watches apps/)" --> argocd
+
+    iam -. pod identity .-> lbc
+    iam -. pod identity .-> ca
+    iam -. pod identity .-> ebscsi
+    iam -. pod identity .-> efscsi
+
+    lbc -- manages --> alb
+    ca -- scales --> nodegroup
+    ebscsi --> gp3
+    ebscsi --> io2
+    efscsi --> efssc
+    efssc --> efs
+    snap --> vsc
+```
 
 ArgoCD is exposed via a single internet-facing ALB at `/argocd`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
 
