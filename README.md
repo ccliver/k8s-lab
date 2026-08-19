@@ -67,12 +67,9 @@ task argocd-password         Retrieve ArgoCD admin password
 │   ├── io2-storage-class.yaml           # io2 StorageClass for high-performance workloads
 │   ├── efs-storage-class.yaml           # EFS StorageClass
 │   ├── ebs-volume-snapshot-class.yaml   # EBS VolumeSnapshotClass
-│   ├── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
-│   └── postgresql-cluster.yaml          # CloudNativePG Cluster resource (managed by ArgoCD)
+│   └── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
 └── apps/                     # ArgoCD Application manifests (GitOps)
-    ├── root.yaml             # Root app that bootstraps all other apps
-    ├── cloudnativepg-operator.yaml  # CloudNativePG operator (cnpg-system)
-    └── postgresql.yaml       # PostgreSQL cluster via CloudNativePG (postgresql)
+    └── root.yaml             # Root app that bootstraps all other apps
 ```
 
 ## Bootstrap Sequence
@@ -108,7 +105,7 @@ task argocd-password         Retrieve ArgoCD admin password
 
 The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/postgresql.yaml` is a working example.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically.
 
 ## Infrastructure Module
 

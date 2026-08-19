@@ -36,7 +36,6 @@ tasks:
     cmds:
       - task: kubeconfig
       - task: delete-argocd-apps
-      - task: delete-postgresql-pvc
       - task: delete-ingress
       - task: drain-and-destroy-nodes
       - task: tf-destroy
@@ -231,13 +230,3 @@ tasks:
     silent: true
     cmds:
       - kubectl delete application --all -n argocd --wait=true --timeout=5m || true
-      - echo "Waiting for ArgoCD to prune postgresql namespace..."
-      - kubectl wait --for=delete namespace/postgresql --timeout=5m || true
-
-  delete-postgresql-pvc:
-    desc: Delete PostgreSQL PVCs so the EBS CSI driver can clean up the volumes before node teardown
-    silent: true
-    cmds:
-      - kubectl delete cluster --all -n postgresql --ignore-not-found=true --wait=true --timeout=2m
-      - kubectl delete pvc --all -n postgresql --ignore-not-found=true --wait=false
-      - for pvc in $(kubectl get pvc -n postgresql -o name 2>/dev/null); do kubectl patch $pvc -n postgresql -p '{"metadata":{"finalizers":[]}}' --type=merge; done
