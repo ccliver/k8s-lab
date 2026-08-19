@@ -60,7 +60,7 @@ tasks:
     dir: terraform
     silent: true
     cmds:
-      - terraform init -backend-config=backend.hcl
+      - terraform init -backend-config=backend.hcl -upgrade=true
 
   tf-plan:
     desc: Show terraform plan
