@@ -87,11 +87,12 @@ tasks:
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
-  ollama-exec:
-    desc: Exec into the Ollama client pod to run the ollama CLI
+  open-webui-pf:
+    desc: Setup local port forwarding to the Open WebUI pod
     silent: true
     cmds:
-      - kubectl exec -it -n ollama deploy/ollama-client -- bash
+      - echo http://127.0.0.1:8080
+      - kubectl port-forward -n ollama svc/open-webui 8080:8080 > /dev/null
 
   alb-dns:
     desc: Print out the ALB DNS name

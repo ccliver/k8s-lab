@@ -29,16 +29,16 @@ flowchart TB
                     argocd["argo-cd server<br/>(app-of-apps)"]
                 end
 
-                gp3["SC: gp3 (default)"]
-                io2["SC: io2"]
+                gp3["SC: ebs-gp3 (default)"]
+                io2["SC: ebs-io2"]
                 efssc["SC: efs"]
-                vsc["VolumeSnapshotClass: ebs"]
+                vsc["VolumeSnapshotClass: ebs-vsc"]
                 nodegroup["managed node group"]
 
                 subgraph ollamans["ollama"]
                     ollama["ollama server<br/>(llama3.2:1b)"]
-                    ollamapvc["PVC<br/>ollama-data (gp3)"]
-                    ollamaclient["ollama-client<br/>(exec-in CLI pod)"]
+                    ollamapvc["PVC<br/>ollama-data (ebs-gp3)"]
+                    webui["open-webui"]
                 end
             end
         end
@@ -62,8 +62,9 @@ flowchart TB
     snap --> vsc
 
     ollama --> ollamapvc
-    ollamapvc -. gp3 .-> gp3
-    ollamaclient -- "OLLAMA_HOST=ollama:11434" --> ollama
+    ollamapvc -. ebs-gp3 .-> gp3
+    webui -- "OLLAMA_BASE_URL=http://ollama:11434" --> ollama
+    user -. "kubectl port-forward" .-> webui
 ```
 
 ArgoCD is exposed via a single internet-facing ALB at `/argocd`. ArgoCD watches the `apps/` directory in this repo and uses the [app-of-apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern to sync all managed applications.
@@ -108,7 +109,7 @@ task kubeconfig              Add/update cluster in ~/.kube/config
 task alb-dns                 Print the ALB DNS name
 task argocd-pf               Port-forward ArgoCD UI → http://127.0.0.1:8080
 task argocd-password         Retrieve ArgoCD admin password
-task ollama-exec             Exec into the Ollama client pod to run the ollama CLI
+task open-webui-pf           Port-forward Open WebUI → http://127.0.0.1:8080
 ```
 
 ## Repository Layout
@@ -129,7 +130,7 @@ task ollama-exec             Exec into the Ollama client pod to run the ollama C
 │   ├── efs-storage-class.yaml           # EFS StorageClass
 │   ├── ebs-volume-snapshot-class.yaml   # EBS VolumeSnapshotClass
 │   ├── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
-│   └── ollama.yaml                      # Ollama server + PVC + Service + client pod (managed by ArgoCD)
+│   └── ollama.yaml                      # Ollama server + PVC + Service + Open WebUI (managed by ArgoCD)
 └── apps/                     # ArgoCD Application manifests (GitOps)
     ├── root.yaml             # Root app that bootstraps all other apps
     └── ollama.yaml           # Ollama app (ollama namespace)
