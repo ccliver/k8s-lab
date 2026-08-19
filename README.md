@@ -47,9 +47,7 @@ task tf-plan                 Show Terraform plan
 task kubeconfig              Add/update cluster in ~/.kube/config
 task alb-dns                 Print the ALB DNS name
 task argocd-pf               Port-forward ArgoCD UI → http://127.0.0.1:8080
-task k8s-lab-status-pf       Port-forward k8s-lab-status app
 task argocd-password         Retrieve ArgoCD admin password
-task publish-http-canary     Build and push http-canary image to Docker Hub (TAG=<tag>, default: latest)
 ```
 
 ## Repository Layout
@@ -65,22 +63,16 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 │   └── versions.tf           # Terraform >= 1.0, AWS ~> 6
 ├── manifests/                # Raw K8s manifests (ingresses/StorageClasses applied by Taskfile; others managed by ArgoCD)
 │   ├── argocd-ingress.yaml              # ArgoCD ALB ingress (envsubst for SG ID)
-│   ├── http-canary.yaml                 # http-canary Deployment/Service (managed by ArgoCD)
-│   ├── k8s-lab-status.yaml              # k8s-lab-status app (managed by ArgoCD)
 │   ├── gp3-storage-class.yaml           # gp3 StorageClass (default, replaces gp2)
 │   ├── io2-storage-class.yaml           # io2 StorageClass for high-performance workloads
 │   ├── efs-storage-class.yaml           # EFS StorageClass
 │   ├── ebs-volume-snapshot-class.yaml   # EBS VolumeSnapshotClass
-│   ├── fake-api-key-secret-provider-class.yaml  # SecretProviderClass for Secrets Manager demo
 │   ├── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
 │   └── postgresql-cluster.yaml          # CloudNativePG Cluster resource (managed by ArgoCD)
-├── apps/                     # ArgoCD Application manifests (GitOps)
-│   ├── root.yaml             # Root app that bootstraps all other apps
-│   ├── http-canary.yaml      # HTTP canary app (CloudWatch metrics via boto3)
-│   ├── cloudnativepg-operator.yaml  # CloudNativePG operator (cnpg-system)
-│   └── postgresql.yaml       # PostgreSQL cluster via CloudNativePG (postgresql)
-└── src/
-    └── http-canary/          # Source for the http-canary Docker image (published to Docker Hub)
+└── apps/                     # ArgoCD Application manifests (GitOps)
+    ├── root.yaml             # Root app that bootstraps all other apps
+    ├── cloudnativepg-operator.yaml  # CloudNativePG operator (cnpg-system)
+    └── postgresql.yaml       # PostgreSQL cluster via CloudNativePG (postgresql)
 ```
 
 ## Bootstrap Sequence
@@ -100,8 +92,7 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 11. **apply-efs-storage-class** — applies EFS StorageClass
 12. **install-volume-snapshot-crds** — installs VolumeSnapshot CRDs and snapshot controller
 13. **apply-ebs-volume-snapshot-class** — applies EBS VolumeSnapshotClass
-14. **apply-fake-api-key-secret-provider-class** — applies SecretProviderClass for Secrets Manager demo
-15. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
+14. **bootstrap-argocd** — applies `apps/root.yaml` to kick off GitOps sync
 
 ## Tear Down
 
@@ -117,7 +108,7 @@ task publish-http-canary     Build and push http-canary image to Docker Hub (TAG
 
 The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/http-canary.yaml` is a working example.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/postgresql.yaml` is a working example.
 
 ## Infrastructure Module
 

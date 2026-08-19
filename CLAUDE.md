@@ -17,7 +17,6 @@ task tf-plan          # terraform plan
 task kubeconfig       # update ~/.kube/config for the cluster
 
 task argocd-pf            # port-forward ArgoCD UI to http://127.0.0.1:8080
-task k8s-lab-status-pf    # port-forward k8s-lab-status app
 task argocd-password      # retrieve ArgoCD admin password
 task alb-dns              # print ALB DNS name
 ```
@@ -45,7 +44,7 @@ Resources provisioned:
 - **EKS cluster** via the `ccliver/k8s-lab/aws` Terraform registry module (cluster name: `k8s-lab`, Kubernetes 1.34)
   - Nodes: `t4g.medium` SPOT, ARM/Graviton, AL2023, min 3 / max 6
 
-`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, `cluster_autoscaler_role_arn`, `efs_file_system_id`, and `k8s_lab_status_sg` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
+`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, `cluster_autoscaler_role_arn`, `ebs_csi_role_arn`, and `efs_file_system_id` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
 
 ### Bootstrap / Destroy Sequences
 
@@ -54,8 +53,6 @@ See `Taskfile.yml` for the full ordered task sequences. `task deploy` and `task 
 ### GitOps / Applications
 
 `apps/` contains ArgoCD `Application` manifests (app-of-apps pattern). `manifests/` contains raw Kubernetes manifests — ingresses and StorageClasses are applied by the Taskfile; everything else is managed by ArgoCD. See the directory for current contents.
-
-`src/http-canary/` holds the Python source and Dockerfile for the `ccliver/http-canary` Docker image. Build and publish with `task publish-http-canary` (supports multi-arch: amd64 + arm64).
 
 ## Provider Versions
 
@@ -78,5 +75,5 @@ When manifests, Taskfile tasks, or Terraform resources change, check whether `RE
 ## Docker & CI Notes
 
 - Nodes are `t4g.medium` ARM/Graviton running AL2023 — use `dnf`/`yum`, **not** `apt-get`, in any Dockerfiles targeting these nodes.
-- The default `docker` driver does not support multi-platform builds. The `publish-http-canary` task handles this with `docker buildx create --name multiplatform --use`, but replicate this pattern for any new multi-platform builds.
+- The default `docker` driver does not support multi-platform builds. Use `docker buildx create --name multiplatform --use` for any multi-platform builds.
 - Always specify `--platform linux/arm64` (or `linux/amd64,linux/arm64` for multi-arch) when building images intended for t4g instances.

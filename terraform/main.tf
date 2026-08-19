@@ -11,56 +11,6 @@ locals {
   project = "k8s-lab"
 }
 
-resource "aws_secretsmanager_secret" "fake_api_key" {
-  name                    = "${local.project}-fake-api-key"
-  recovery_window_in_days = 0
-}
-
-resource "aws_secretsmanager_secret_version" "fake_api_key" {
-  secret_id     = aws_secretsmanager_secret.fake_api_key.id
-  secret_string = "D8B69013-764D-40C1-B3E3-C69989CF1343"
-}
-
-data "aws_iam_policy_document" "k8s_lab_status_trust" {
-  statement {
-    principals {
-      type        = "Service"
-      identifiers = ["pods.eks.amazonaws.com"]
-    }
-
-    actions = ["sts:AssumeRole", "sts:TagSession"]
-  }
-}
-
-resource "aws_iam_role" "k8s_lab_status" {
-  name               = "${local.project}-status"
-  assume_role_policy = data.aws_iam_policy_document.k8s_lab_status_trust.json
-}
-
-resource "aws_eks_pod_identity_association" "k8s_lab_status" {
-  cluster_name    = local.project
-  namespace       = "k8s-lab-status"
-  service_account = "k8s-lab-status"
-  role_arn        = aws_iam_role.k8s_lab_status.arn
-
-  depends_on = [module.k8s_lab]
-}
-
-data "aws_iam_policy_document" "k8s_lab_status" {
-  statement {
-    actions = [
-      "secretsmanager:GetSecretValue",
-    ]
-    resources = [aws_secretsmanager_secret.fake_api_key.arn]
-  }
-}
-
-resource "aws_iam_role_policy" "k8s_lab_status" {
-  name   = "k8s-lab-status-policy"
-  role   = aws_iam_role.k8s_lab_status.id
-  policy = data.aws_iam_policy_document.k8s_lab_status.json
-}
-
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
   version = "1.25.0"
