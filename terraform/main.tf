@@ -13,7 +13,7 @@ locals {
 
 module "k8s_lab" {
   source  = "ccliver/k8s-lab/aws"
-  version = "1.26.0"
+  version = "1.27.1"
 
   use_eks                        = true
   project                        = local.project
@@ -30,4 +30,16 @@ module "k8s_lab" {
   deploy_ebs_csi_role            = true
   deploy_efs_csi_role            = true
   use_pod_identity               = true
+}
+
+resource "aws_eks_addon" "cert_manager" {
+  cluster_name = local.project
+  addon_name   = "cert-manager"
+  depends_on   = [module.k8s_lab]
+}
+
+resource "aws_eks_addon" "adot" {
+  cluster_name = local.project
+  addon_name   = "adot"
+  depends_on   = [aws_eks_addon.cert_manager]
 }
