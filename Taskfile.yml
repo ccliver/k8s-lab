@@ -94,6 +94,13 @@ tasks:
       - echo http://127.0.0.1:8080
       - kubectl port-forward -n ollama svc/open-webui 8080:8080 > /dev/null
 
+  podinfo-pf:
+    desc: Setup local port forwarding to the podinfo service
+    silent: true
+    cmds:
+      - echo http://127.0.0.1:9898
+      - kubectl port-forward -n podinfo svc/podinfo 9898:9898 > /dev/null
+
   alb-dns:
     desc: Print out the ALB DNS name
     silent: true
@@ -106,6 +113,21 @@ tasks:
     silent: true
     cmds:
       - terraform output
+
+  tf-status:
+    desc: Quickly check whether anything is currently deployed in terraform state
+    dir: terraform
+    silent: true
+    cmds:
+      - |
+        terraform init -backend-config=backend.hcl > /dev/null
+        COUNT=$(terraform state list | wc -l | tr -d ' ')
+        if [ "$COUNT" -eq 0 ]; then
+          echo "No resources in terraform state — nothing deployed."
+        else
+          echo "$COUNT resource(s) in terraform state:"
+          terraform state list
+        fi
 
   tf-apply:
     dir: terraform

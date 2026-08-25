@@ -32,7 +32,7 @@ module "k8s_lab" {
   use_pod_identity               = true
 }
 
-resource "aws_eks_addon" "cert_manager" {
+/*resource "aws_eks_addon" "cert_manager" {
   cluster_name = local.project
   addon_name   = "cert-manager"
   depends_on   = [module.k8s_lab]
@@ -42,4 +42,4 @@ resource "aws_eks_addon" "adot" {
   cluster_name = local.project
   addon_name   = "adot"
   depends_on   = [aws_eks_addon.cert_manager]
-}
+}*/
