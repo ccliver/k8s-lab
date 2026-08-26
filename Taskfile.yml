@@ -2,9 +2,6 @@
 
 version: '3'
 
-env:
-  AWS_PROFILE: lab
-
 tasks:
   default:
     silent: true
