@@ -16,7 +16,7 @@ flowchart TB
         subgraph vpc["VPC"]
             alb["ALB<br/>(argocd ingress)"]
 
-            subgraph eks["EKS Cluster: k8s-lab (v1.34)<br/>t4g.medium ARM SPOT, 3-6 nodes"]
+            subgraph eks["EKS Cluster: k8s-lab (v1.36)<br/>t4g.medium ARM ON_DEMAND, 3-6 nodes"]
                 subgraph kubesystem["kube-system"]
                     lbc["aws-load-balancer-controller"]
                     ca["cluster-autoscaler"]
@@ -39,6 +39,10 @@ flowchart TB
                     ollama["ollama server<br/>(llama3.2:1b)"]
                     ollamapvc["PVC<br/>ollama-data (ebs-gp3)"]
                     webui["open-webui"]
+                end
+
+                subgraph podinfons["podinfo"]
+                    podinfo["podinfo deployment"]
                 end
             end
         end
@@ -75,12 +79,12 @@ ArgoCD is exposed via a single internet-facing ALB at `/argocd`. ArgoCD watches 
 |------|---------|
 | [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.0 | Infrastructure provisioning |
 | [task](https://taskfile.dev/installation/) | Task runner |
-| [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) | AWS operations (profile: `lab`) |
+| [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) | AWS operations (profile: `lab`, exported as `AWS_PROFILE=lab`) |
 | [kubectl](https://kubernetes.io/docs/tasks/tools/) | Cluster interaction |
 | [helm](https://helm.sh/docs/intro/install/) | Chart installs |
 | [envsubst](https://www.gnu.org/software/gettext/) | Manifest templating |
 
-An AWS profile named `lab` must be configured in `~/.aws/credentials` / `~/.aws/config`.
+An AWS profile named `lab` must be configured in `~/.aws/credentials` / `~/.aws/config`, and exported as `AWS_PROFILE=lab` in your shell — the Taskfile does not set it for you.
 
 ## Quick Start
 
@@ -110,6 +114,7 @@ task alb-dns                 Print the ALB DNS name
 task argocd-pf               Port-forward ArgoCD UI → http://127.0.0.1:8080
 task argocd-password         Retrieve ArgoCD admin password
 task open-webui-pf           Port-forward Open WebUI → http://127.0.0.1:8080
+task podinfo-pf              Port-forward podinfo service → http://127.0.0.1:9898
 ```
 
 ## Repository Layout
@@ -130,10 +135,12 @@ task open-webui-pf           Port-forward Open WebUI → http://127.0.0.1:8080
 │   ├── efs-storage-class.yaml           # EFS StorageClass
 │   ├── ebs-volume-snapshot-class.yaml   # EBS VolumeSnapshotClass
 │   ├── nginx-efs.yaml                   # Nginx deployment on EFS (demo)
-│   └── ollama.yaml                      # Ollama server + PVC + Service + Open WebUI (managed by ArgoCD)
+│   ├── ollama.yaml                      # Ollama server + PVC + Service + Open WebUI (managed by ArgoCD)
+│   └── podinfo.yaml                     # Podinfo deployment + Service (managed by ArgoCD)
 └── apps/                     # ArgoCD Application manifests (GitOps)
     ├── root.yaml             # Root app that bootstraps all other apps
-    └── ollama.yaml           # Ollama app (ollama namespace)
+    ├── ollama.yaml           # Ollama app (ollama namespace)
+    └── podinfo.yaml          # Podinfo app (podinfo namespace)
 ```
 
 ## Bootstrap Sequence
@@ -169,11 +176,11 @@ task open-webui-pf           Port-forward Open WebUI → http://127.0.0.1:8080
 
 The `apps/root.yaml` root Application is the only manifest applied manually via `kubectl` (during `task deploy`). It implements the [app of apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) pattern — ArgoCD watches the `apps/` directory and automatically syncs any new `Application` manifests committed there.
 
-To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. The `apps/ollama.yaml` is a working example.
+To add a new application, commit an ArgoCD `Application` manifest to `apps/` and push — no `kubectl apply` needed. ArgoCD will detect and sync it automatically. `apps/ollama.yaml` and `apps/podinfo.yaml` are working examples.
 
 ## Infrastructure Module
 
-Terraform uses the [`ccliver/k8s-lab/aws`](https://registry.terraform.io/modules/ccliver/k8s-lab/aws) module (v1.14.1). Remote state is stored in S3 with native S3 lock file support. Backend configuration is kept in a gitignored `terraform/backend.hcl` — copy `terraform/backend.hcl.example` and fill in your own bucket details before deploying.
+Terraform uses the [`ccliver/k8s-lab/aws`](https://registry.terraform.io/modules/ccliver/k8s-lab/aws) module (v1.27.1). Remote state is stored in S3 with native S3 lock file support. Backend configuration is kept in a gitignored `terraform/backend.hcl` — copy `terraform/backend.hcl.example` and fill in your own bucket details before deploying.
 
 ## Pre-commit Hooks
 

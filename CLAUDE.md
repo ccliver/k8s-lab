@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-A Kubernetes lab environment on AWS EKS with ArgoCD for GitOps. Infrastructure is managed via Terraform and a [Taskfile](https://taskfile.dev) runner. AWS profile `lab` is used by default.
+A Kubernetes lab environment on AWS EKS with ArgoCD for GitOps. Infrastructure is managed via Terraform and a [Taskfile](https://taskfile.dev) runner. AWS profile `lab` is used by convention — export `AWS_PROFILE=lab` yourself before running `task` commands (the Taskfile does not set it for you).
 
 ## Common Commands
 
@@ -41,10 +41,10 @@ pre-commit run --all-files
 All Terraform lives in `terraform/`. Remote state is in S3 (`ccliver-k8s-lab-tf-state`, us-east-1) with lock file support. **Terraform manages AWS resources only** — no Helm or Kubernetes providers.
 
 Resources provisioned:
-- **EKS cluster** via the `ccliver/k8s-lab/aws` Terraform registry module (cluster name: `k8s-lab`, Kubernetes 1.34)
-  - Nodes: `t4g.medium` SPOT, ARM/Graviton, AL2023, min 3 / max 6
+- **EKS cluster** via the `ccliver/k8s-lab/aws` Terraform registry module (cluster name: `k8s-lab`, Kubernetes 1.36)
+  - Nodes: `t4g.medium` ON_DEMAND, ARM/Graviton, AL2023, min 3 / max 6
 
-`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, `cluster_autoscaler_role_arn`, `ebs_csi_role_arn`, and `efs_file_system_id` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
+`terraform/output.tf` exposes `aws_lbc_role_arn`, `vpc_id`, `alb_security_group_id`, `cluster_autoscaler_role_arn`, `ebs_csi_role_arn`, `efs_csi_role_arn`, and `efs_file_system_id` — these are consumed by Taskfile tasks at deploy time via `terraform output -raw`.
 
 ### Bootstrap / Destroy Sequences
 
